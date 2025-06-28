@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
@@ -53,89 +54,14 @@ export default function Navbar() {
     transition: "all 0.3s ease-in-out",
   }
 
-  const logoKeyframes = `
-  @keyframes layer-drop-1 {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(0.5px); }
-  }
-  
-  @keyframes layer-drop-2 {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(1px); }
-  }
-  
-  @keyframes layer-drop-3 {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(1.5px); }
-  }
-
-  @keyframes elegant-lift {
-    0% { transform: translateY(0px) scale(1); }
-    100% { transform: translateY(-1px) scale(1.02); }
-  }
-
-  @keyframes elegant-settle {
-    0% { transform: translateY(-1px) scale(1.02); }
-    100% { transform: translateY(0px) scale(1); }
-  }
-
-  @keyframes subtle-glow {
-    0% { filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0)); }
-    100% { filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.15)); }
-  }
-  
-  .yoyo-layer-1 {
-    animation: layer-drop-1 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-  
-  .yoyo-layer-2 {
-    animation: layer-drop-2 4s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.3s;
-  }
-  
-  .yoyo-layer-3 {
-    animation: layer-drop-3 4s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.6s;
-  }
-  
-  .yoyo-logo {
-    overflow: visible;
-    padding: 2px 0;
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    cursor: pointer;
-  }
-  
-  .yoyo-logo:hover {
-    animation: elegant-lift 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards,
-               subtle-glow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
-
-  .yoyo-logo:not(:hover) {
-    animation: elegant-settle 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
-
-  .yoyo-logo:hover .yoyo-layer-1 {
-    animation: layer-drop-1 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-  
-  .yoyo-logo:hover .yoyo-layer-2 {
-    animation: layer-drop-2 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.15s;
-  }
-  
-  .yoyo-logo:hover .yoyo-layer-3 {
-    animation: layer-drop-3 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.3s;
-  }
-`
-
   const navLinks = [
-    { href: "/features", label: "Features" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/about", label: "About" },
-    { href: "/careers", label: "Careers" },
+    { href: "/", label: "Home" },
+    { href: "/training", label: "Trainer" },
   ]
 
   return (
     <div>
       <div className="fixed top-0 left-0 right-0 z-50 flex justify-center px-6 md:px-8 transition-all duration-300">
-        <style jsx>{logoKeyframes}</style>
         <div className="w-[calc(100%-24px)] max-w-[1400px] mt-4">
           <nav
             className="flex items-center justify-between p-2 h-16 bg-black rounded-[16px] text-white font-geist"
@@ -144,25 +70,15 @@ export default function Navbar() {
             {/* Logo */}
             <div className="flex items-center ml-[15px]">
               <Link href="/" className="flex items-center">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="24"
-                  height="28"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="mr-2 yoyo-logo"
-                  style={{ overflow: "visible" }}
-                >
-                  <path
-                    className="yoyo-layer-1"
-                    d="M12 2L2 7L12 12L22 7L12 2Z"
-                    fill="#FFFFFF"
-                    stroke="#FFFFFF"
-                    strokeWidth="1"
+                <div className="mr-2 w-7 h-7 relative">
+                  <Image
+                    src="/images/code-four-logo.png"
+                    alt="Code Four Logo"
+                    width={28}
+                    height={28}
+                    className="rounded-sm"
                   />
-                  <path className="yoyo-layer-2" d="M2 12L12 17L22 12" stroke="#FFFFFF" strokeWidth="1" />
-                  <path className="yoyo-layer-3" d="M2 17L12 22L22 17" stroke="#FFFFFF" strokeWidth="1" />
-                </svg>
+                </div>
                 <span
                   className="logo-text"
                   style={{
@@ -176,7 +92,7 @@ export default function Navbar() {
                     height: "auto",
                   }}
                 >
-                  Casrin
+                  Code Four
                 </span>
               </Link>
             </div>

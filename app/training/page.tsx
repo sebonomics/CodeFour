@@ -1,0 +1,1837 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Slider } from "@/components/ui/slider"
+import { CheckCircle, Edit3, Brain, FileText, Zap, ArrowLeft, Settings } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { diffWords } from "diff"
+
+interface Report {
+  id: number
+  title: string
+  originalText: string
+  editedText: string
+  isEdited: boolean
+}
+
+interface StyleRule {
+  type:
+    | "word_replacement"
+    | "tone_adjustment"
+    | "conciseness"
+    | "voice_change"
+    | "phrase_replacement"
+    | "sentence_structure"
+    | "punctuation_style"
+    | "capitalization"
+    | "number_format"
+    | "time_format"
+    | "professional_terminology"
+    | "multi_word_replacement"
+    | "sentence_length_preference"
+    | "active_passive_voice"
+  pattern: string
+  replacement: string
+  frequency: number
+  description?: string
+  confidence?: number
+  reportId?: number
+  reportIds?: number[]
+}
+
+interface TextDiff {
+  type: "added" | "removed" | "unchanged"
+  value: string
+}
+
+interface AppliedPattern {
+  rule: StyleRule
+  applied: boolean
+  reason?: string
+}
+
+const sampleReports: Report[] = [
+  {
+    id: 1,
+    title: "#1 - DUI Investigation - Taco Bell Drive-Thru",
+    originalText: `I arrived at Taco Bell and started walking toward the drive-thru and was pointed toward a silver 2001 Honda CRV. I approached the vehicle and observed its driver asleep in the driver's seat with the vehicle running. I knocked several times and asked the driver to roll her window down. The driver woke up and appeared confused, and then appeared to wave me off.
+
+I knocked on the driver's window again, asking her to roll the window down. She opened the door. I observed that the vehicle was in neutral and told the driver to place the car in park. I was getting a strong odor of an alcoholic beverage coming from her. I observed the driver's eyes were red, watery, and bloodshot, and her face appeared droopy. She appeared to be having a hard time understanding my instructions. I observed an open case of beer in the back seat and an open beer can in the cup holder adjacent to her. The driver placed her hands on the steering wheel as if she was going to drive away. I reached in, placed the car in park, turned the vehicle off, and dropped the car keys by her feet. The driver's pupils appeared dilated.
+
+I asked the driver what was going on. She said she was trying to go home. I asked her to step outside of the vehicle. She said okay and then tried to shut the door on me. She began trying to start her car without her keys, placing her hands where the keys would be and making a turning motion near the ignition, and then placed her hands on the steering wheel as if to drive away. I told her again to step outside of the vehicle, asking her several times. She said that she was ready, then grabbed her keys and appeared to try to find the key to start the vehicle with. I told the driver that she was under arrest and grabbed her wrist and her right shoulder gently encouraging her outside her vehicle. WSU Sgt. Kurht assisted me in getting her outside of the vehicle. Once the driver was outside the vehicle she became compliant. I placed the driver into handcuffs and checked for a good fit.
+
+WSU Sgt. Kuhrt asked the driver if he could park the car, she said yes. I asked how much she had to drink. She told me "Not much, honestly". When asked why she fell asleep at the wheel at Taco Bell, she said it had been a hectic week with finals and she was tired. When asked about the beer in her cupholder she said it wasn't hers. She then said it was hers from two days ago and then told me it wasn't hers again or something to that effect. I asked the driver if she would be willing to perform some voluntary field sobriety tests to which she agreed. I took the driver out of handcuffs. 
+
+HGN: I observed lack of smooth pursuit in the driver's left and right eyes. She moved her head several times throughout the test. At times she would stop looking at my stimulus, look at me, and look back at the stimulus.
+
+WAT: The driver had issues with balance while in the starting position, and had trouble getting into the starting position. She used her arms for balance while walking and stopped walking during the test. On her 9th step, instead of turning she began walking slowly backwards.
+
+OLS: The driver began walking forward while counting out loud. I stopped her, gave her the instructions again. During the test, Ofc. Emerson had to remind her to lift her foot at least six inches off the ground. Several times during the test she raised her eyes from her foot and look straight ahead. She swayed while balancing.
+
+PBT: I asked the driver if she was willing to provide a breath sample. She agreed. The driver provided a PBT of .249% at approximately 3:09 a.m.
+
+It was my opinion that the driver was impaired. I placed her under arrest for DUI and transported her to the Pullman Police Department.`,
+    editedText: "",
+    isEdited: false,
+  },
+  {
+    id: 2,
+    title: "#6 - Football Field Affray - Multiple Subjects",
+    originalText: `On November 13, 2021, at approximately 1148 hours, I was dispatched to the football fields in reference to an affray involving more than 30 people. This was the second time I had been dispatched to the football fields within the hour.
+
+As I was en route, dispatch advised that there was a male subject knocked unconscious. By the time I arrived on scene, everything appeared to be quiet. As I exited my vehicle, I had to ask a female walking with her children if there was an affray going on, because I couldn't tell based on my initial observation.
+
+There were large groups of people hovering around the entire field. She advised that yes, there was a fight, it was all over and that it was further north of my location.
+
+As I was walking, I was flagged down by a male subject who pointed to two male subjects who had just walked past me and advised that they were the instigators to the altercation and that was the reason why they were fleeing. I related this to officer Nathaniel Telles.
+
+I then saw another small group of individuals surrounding one male who was on the ground and that was my victim, Mr. Enrique Aguilera. As I started relaying information to the fire department on where they could make entry into the park since we were right in the middle, I made contact with a female who was standing by Mr. Aguilera, and she was identified as Ms. Theresa Acosta. She was the fiancee of Mr. Aguilera and stated that the football game had been finished and her team was the Picacho Middle School football team.
+
+She said that the players had finished the game and then as they were shaking hands with each other they started fighting. The kids started fighting and then the coaches tried to intervene and separate the children. The next thing she knew, parents started jumping in and then the parents started fighting with each other.
+
+Video showed that the two teams had finished playing, and that during the process of shaking each other's hands something was said amongst them. It caught their attention, as they stop moving, and then they start running toward each other. Then, some of the coaches and a few parents try to intervene and separate the children. A number of parents rush into the field and there are piles of people fighting on the ground.
+
+I then spoke to Officer Telles, who had actually detained the male subject that I had called out initially. He stated that they were just involved.
+
+As I was standing by with Officer Benoit, David Chaparro came up to me and advised that he was the one who initially started the fight. He stated that he was on the Picacho team and was a friend of the head coach, Mr. Enrique Aguilera, who was transported to the hospital. He stated that the football game was over and a juvenile male on the Lynn Middle School team, wearing a red jersey with "87" on it, had said something to one of his players and the two started fighting. Then a white male coach from the Lynn team grabbed his player's jersey and was about to punch him when Mr. Chaparro ran over there, threw the coach to the side. The coach then came back and punched him in the face. As soon as the coach had punched him in the face, he grabbed him and pushed him on the ground and the coach took him down to the ground as well, and then the next thing he knew, everybody just started fighting one another. After talking with David, I decided to let him go after not being able to discern who the sole instigator. End of case.`,
+    editedText: "",
+    isEdited: false,
+  },
+  {
+    id: 3,
+    title: "#10 - Domestic Disturbance - Apartment Complex",
+    originalText: `On August 3, 2020, at approximately 0254 hours, I responded to a call for a domestic disturbance at a residential complex. Upon my arrival, I observed two officers already on scene speaking with an adult Black male who was standing on the sidewalk. He was identified as the reporting party.
+
+The officers briefed me that the male was in a dispute with his girlfriend, who was currently located inside his apartment and was refusing to leave. I made contact with the male to get a full account of the situation. He explained that his girlfriend was supposed to be staying with him for the entire weekend, but they had an altercation. He stated his belief that she may be intoxicated. I asked what his desired outcome was, and he stated he wanted officers to make her leave the apartment for the night. I then inquired if he would be willing to press any potential criminal charges and act as the victim in the matter, to which he replied, "Yes."
+
+Based on his request, myself and another officer proceeded upstairs to the apartment to make contact with the female. An adult female answered the door. I began by inquiring about the living situation to determine who was the primary resident. After some questioning, she confirmed that the apartment belonged to the man we had just spoken with downstairs. I then informed her that the owner of the apartment was requesting that she vacate the premises for the evening.
+
+The female immediately became uncooperative and stated she was not leaving. She began giving numerous reasons why she could not leave, claiming she had personal property such as mail and clothing inside that she needed. She then asserted that she had been residing in the apartment for more than 14 days and, as such, had established legal residency. She argued that we could not lawfully force her to leave without a formal eviction.
+
+Given the female's claim of residency, which turns the matter into a civil issue, I went back downstairs to update the male on the situation. I explained the legal complexities and that we could not physically remove her against her will under these circumstances. After understanding this, the male decided to alter his plan. He stated he was just going to go inside to grab some of his own things. He proceeded back up to the apartment, entered briefly to collect some belongings, and then exited the building. He then left the premises entirely to de-escalate the situation.
+
+With the primary resident and reporting party having left the scene, the female remained in the apartment. She refused any further communication and would not leave. As there was no further police action that could be taken, and the incident had become a civil matter, all units cleared the scene.`,
+    editedText: "",
+    isEdited: false,
+  },
+  {
+    id: 4,
+    title: "#15 - Structure Fire Investigation - Arson",
+    originalText: `On Tuesday, December 21, 2021, at approximately 0903 hours, I was dispatched to an active structure fire at a multi-story apartment building.
+
+Upon my arrival, I observed visible flames and heavy smoke coming from the windows of a second-story apartment. My first priority was life safety. I immediately began ordering all residents and bystanders to evacuate the premises and move to a safe distance as fire department units began to arrive and attack the blaze.
+
+After the fire department successfully quenched the flames and the immediate danger had passed, I began interviewing witnesses on the scene. My goal was to determine if all occupants were accounted for and to gather any information regarding the potential cause of the fire. During this process, I made contact with an older gentleman wearing a military-style cap, who was watching the scene.
+
+When I asked him what he had witnessed, he made a direct and spontaneous confession, stating, "I lit it." He confirmed that the apartment where the fire originated was his. When I asked for his reasoning, his explanation was confusing and disjointed, saying he did it because "no one else is coming."
+
+The nature of the confession prompted me to speak with my supervisor on scene. I also located the property owner, who confirmed the man, identified as Mr. Hicks, was the resident of the fire-damaged apartment. The owner stated that Mr. Hicks's reasoning made no sense. A survey of the building showed that approximately four apartments on the second floor were heavily damaged, leaving many residents displaced.
+
+Given Mr. Hicks's confession, combined with his questionable mental state, the decision was made to place him in protective custody. He was escorted to my patrol vehicle. I then transported him to the hospital for a two-fold purpose: to be assessed for any respiratory damage from smoke inhalation and to undergo a preliminary psychological evaluation.
+
+At the hospital, medical staff conducted their assessment and ultimately found no abnormal conditions that would warrant an involuntary psychiatric hold. Once Mr. Hicks was medically cleared, probable cause for a criminal act was established based on his on-scene confession to me. I informed him that he was now under arrest for arson. He was discharged from the hospital directly into my custody, and I transported him to the station for formal questioning.`,
+    editedText: "",
+    isEdited: false,
+  },
+  {
+    id: 5,
+    title: "#37 - High-Speed Pursuit - Vehicle Pursuit",
+    originalText: `On Saturday, November 9, 2019 at approximately 9:57 p.m., I observed a vehicle traveling south at a high rate of speed. I activated my radar unit and locked in a speed of 94 mph in an 55 mph zone. I saw the car immediately slow down. As the vehicle passed my location, I was able to see that it was a black passenger car. I pulled onto the highway and attempted to catch up to the car so that I could initiate a traffic stop. As I accelerated towards the car, I could tell that the car was accelerating and that it was not maintaining a single lane. I initiated my lights and sirens once I realized the car was fleeing.
+
+The car continued south on Highway 79 a short distance and turned west on Columbia Road 64. I pursued the car and advised Hope of the pursuit. The car continued on Columbia 64. As it traveled west, it drove between two vehicles parked on opposite sides of the roadway. The car then turned north onto Columbia Road 111. I saw an opportunity to end the pursuit and rammed the car with the front of my car. The ram was unsuccessful in stopping the car and it continued north. Columbia 111 is a gravel road and the car continued at a high rate of speed and was able to create distance between us. I was able to follow the dust cloud left by the car. It continued north on Columbia 111 until it turned north west onto Ouachita 1.
+
+The car then traveled into Nevada county. While following the dust trail, I regained visual of the car while on Nevada 179. The car had slowed considerably as I caught up to it. I lost visual as the car rounded a curve, as I rounded the curve I could see the car had stopped in the roadway. The driver's door was open as well as the passenger's. I could see feet hanging out of the passenger door as I stopped my vehicle.
+
+I exited my unit and ordered the passenger not to move. The female passenger followed commands and was taken into custody. The female was identified as Harlie Colvin. I asked her who was driving and if he had a weapon. She advised me that Broderick Colvin was the driver and that he did not have a weapon. She said that he fled into the woods to the left of the car and that he was fleeing because he had warrants.
+
+I asked her how long she had known Broderick Colvin. She told me that this was their first night of being alone together. Once other units arrived we searched for the suspect but were unsuccessful in finding him. A search of the vehicle was conducted. There was a Marlin .22 Rifle located between the driver's seat and the center console that the female said belonged to the driver. A knife was also found in the edge of the woods. Both the gun and the knife were seized.
+
+I returned to Colvin and asked her why her and the suspect had the same last name. She told me she was actually married to the suspect. I stopped her and immediately advised her of her Miranda Rights. I told her that she had lied to me and that she was facing hindering and obstruction charges. She told me that the driver was actually RJ Hughey, Ronnie Damaria Hughey, Jr. Colvin stated that he told her not to identify him. I confirmed his identity through photograph. Harlie Colvin then wrote out a statement and signed that statement advising who the driver was. Harlie Colvin was released with the vehicle and charges could be pending.`,
+    editedText: "",
+    isEdited: false,
+  },
+]
+
+const testReport = {
+  id: 6,
+  title: "Robbery Investigation - La Quinta Hotel",
+  originalText: `On March 6, 2021, at approximately 1233 hours, while on uniform patrol for the Las Cruces Police Department, I was dispatched to 790 Avenida de Mesilla at the La Quinta in reference to a possible robbery. Dispatch was advising that they were approached by a customer and that a a male pulled out a gun and tried to rob him. They advised that the customer in the lobby was wearing a jacket, black pants, and a black hat. The male left the scene running to the next building on the east side of the property.
+
+As I was arriving on scene, I came in contact with the reporting party, Rick  Boy, and another subject. I was attempting to get information as to whether the possible suspect and victim had left. As I was speaking to Mr. Boy in the front parking lot near the front doorway, a male subject ran out of the annex building which was just to the east and ran toward the north end of the property and turned running eastbound. That is when Mr. Boy informed me that was the male subject we were looking for. At first, it was unclear as to whether the identified party was the victim or the suspect. I provided that information to other units who were arriving on scene. There were able to detain several male subjects who matched the description of a blue jean jacket, black pants, and a black hat, possibly a Hispanic male a last seen heading east from the north end of the annex building.
+
+Later, it was determined that it was possibly the victim of the incident who initially came over to Mr. Boy, advising that he had been robbed.
+
+After speaking to several employees, we went over and cleared two rooms in the annex building, one of which officer Brian Klimeck (L797) had contact with a male subject who later was found to have some warrants and possible narcotics on him. See officer Brian Klimeck's (L797) report for further information. There were also several electronic items such as phones and other things in that room itself. From there, I went over to get more information from the employees who were on scene. They advised that there were two males, one wearing a black shirt with black shorts and the other male wearing a jean jacket and a black hat with the black pants.
+
+They stated that they had seen them walking and that they were on the west corridor inside near the Norther portion of that corridor checking rooms. They advised that they had seen those two males walking and asked if they needed help. They stated that the male in the Black was his brother and they were just having a slight disagreement. He advised that the males had walked upstairs and that is when they heard possible running and one male ran down and came back toward the employees and stated that he had been robbed by the other male subject but they did not see where the other male subject had gone or if he had come downstairs and left.
+
+The victim stated that the male pulled out a firearm and robbed him and took his money. He advised that he did not see the suspect after that occurred and stated that he went over to make contact with the front desk so they could contact law enforcement. Shortly thereafter, the victim had left the scene. They advised that while I was there gathering information, the girlfriend of the male subject where the parties possibly came from had a ride. The room was in her name: Valerie Valles.
+
+I gathered Ms. Valles' information and asked her what had occurred. When I ran her information, dispatch advised she had warrants for her arrest. Ms. Valles was arrested and transported, first to Mesilla Valley Regional Dispatch Authority to pick up the warrants, then to the detention center.
+
+No other details. No other information.`,
+}
+
+// Proper diff implementation using diff library
+function createDiff(original: string, edited: string): TextDiff[] {
+  const wordDiffs = diffWords(original, edited)
+  const diffs: TextDiff[] = []
+
+  wordDiffs.forEach((part) => {
+    if (part.added) {
+      diffs.push({ type: "added", value: part.value })
+    } else if (part.removed) {
+      diffs.push({ type: "removed", value: part.value })
+    } else {
+      diffs.push({ type: "unchanged", value: part.value })
+    }
+  })
+
+  return diffs
+}
+
+function detectWordReplacements(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const diffs = createDiff(original, edited)
+
+  // Look for removed word/phrase followed by added word/phrase (replacement pattern)
+  for (let i = 0; i < diffs.length - 1; i++) {
+    if (diffs[i].type === "removed" && diffs[i + 1].type === "added") {
+      const removedText = diffs[i].value.trim()
+      const addedText = diffs[i + 1].value.trim()
+
+      // Skip if empty or just whitespace
+      if (!removedText || !addedText) continue
+
+      // Skip if it's just punctuation changes (quotes, periods, etc.)
+      const removedAlphanumeric = removedText.replace(/[^\w\s]/g, "").trim()
+      const addedAlphanumeric = addedText.replace(/[^\w\s]/g, "").trim()
+
+      if (removedAlphanumeric === addedAlphanumeric) continue
+
+      // Clean the text of punctuation for comparison
+      const cleanRemovedText = removedText
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+      const cleanAddedText = addedText
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+
+      // Skip if the text is the same after cleaning punctuation
+      if (cleanRemovedText === cleanAddedText) continue
+
+      const removedWords = cleanRemovedText.split(/\s+/).filter((w) => w.length > 0)
+      const addedWords = cleanAddedText.split(/\s+/).filter((w) => w.length > 0)
+
+      // Handle both word-to-word, word-to-phrase, and phrase-to-word replacements
+      if (removedWords.length >= 1 && addedWords.length >= 1) {
+        let ruleType = "word_replacement"
+        let description = ""
+
+        if (removedWords.length === 1 && addedWords.length === 1) {
+          // Word to word
+          ruleType = "word_replacement"
+          description = `Replace word "${cleanRemovedText}" with "${cleanAddedText}"`
+        } else if (removedWords.length === 1 && addedWords.length > 1) {
+          // Word to phrase
+          ruleType = "phrase_replacement"
+          description = `Replace word "${cleanRemovedText}" with phrase "${cleanAddedText}"`
+        } else if (removedWords.length > 1 && addedWords.length === 1) {
+          // Phrase to word
+          ruleType = "phrase_replacement"
+          description = `Replace phrase "${cleanRemovedText}" with word "${cleanAddedText}"`
+        } else {
+          // Phrase to phrase
+          ruleType = "phrase_replacement"
+          description = `Replace phrase "${cleanRemovedText}" with phrase "${cleanAddedText}"`
+        }
+
+        rules.push({
+          type: ruleType as StyleRule["type"],
+          pattern: cleanRemovedText,
+          replacement: cleanAddedText,
+          frequency: 1,
+          confidence: 0.9,
+          description: description,
+        })
+      }
+    }
+  }
+
+  return rules
+}
+
+function detectMultiWordReplacements(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const diffs = createDiff(original, edited)
+
+  // Look for multi-word to single-word or single-word to multi-word replacements
+  for (let i = 0; i < diffs.length - 1; i++) {
+    if (diffs[i].type === "removed" && diffs[i + 1].type === "added") {
+      const removedText = diffs[i].value.trim()
+      const addedText = diffs[i + 1].value.trim()
+
+      // Skip if empty or just whitespace
+      if (!removedText || !addedText) continue
+
+      // Clean the text of punctuation for comparison
+      const cleanRemovedText = removedText
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+      const cleanAddedText = addedText
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+
+      // Skip if the text is the same after cleaning punctuation
+      if (cleanRemovedText === cleanAddedText) continue
+
+      const removedWords = cleanRemovedText.split(/\s+/).filter((w) => w.length > 0)
+      const addedWords = cleanAddedText.split(/\s+/).filter((w) => w.length > 0)
+
+      // Specifically track multi-word replacements
+      if (
+        (removedWords.length > 1 && addedWords.length === 1) ||
+        (removedWords.length === 1 && addedWords.length > 1) ||
+        (removedWords.length > 1 && addedWords.length > 1 && removedWords.length !== addedWords.length)
+      ) {
+        let description = ""
+        if (removedWords.length > 1 && addedWords.length === 1) {
+          description = `Replace ${removedWords.length} words "${cleanRemovedText}" with 1 word "${cleanAddedText}"`
+        } else if (removedWords.length === 1 && addedWords.length > 1) {
+          description = `Replace 1 word "${cleanRemovedText}" with ${addedWords.length} words "${cleanAddedText}"`
+        } else {
+          description = `Replace ${removedWords.length} words "${cleanRemovedText}" with ${addedWords.length} words "${cleanAddedText}"`
+        }
+
+        rules.push({
+          type: "multi_word_replacement",
+          pattern: cleanRemovedText,
+          replacement: cleanAddedText,
+          frequency: 1,
+          confidence: 0.9,
+          description: description,
+        })
+      }
+    }
+  }
+
+  return rules
+}
+
+function detectPhraseReplacements(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const diffs = createDiff(original, edited)
+
+  // Look for consecutive removed/added sequences that form phrases
+  let i = 0
+  while (i < diffs.length) {
+    if (diffs[i].type === "removed") {
+      let removedPhrase = ""
+      let addedPhrase = ""
+      let j = i
+
+      // Collect consecutive removed parts
+      while (j < diffs.length && diffs[j].type === "removed") {
+        removedPhrase += diffs[j].value
+        j++
+      }
+
+      // Collect consecutive added parts
+      while (j < diffs.length && diffs[j].type === "added") {
+        addedPhrase += diffs[j].value
+        j++
+      }
+
+      // Clean phrases of punctuation for meaningful comparison
+      const cleanRemovedPhrase = removedPhrase
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+      const cleanAddedPhrase = addedPhrase
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+
+      // Skip if phrases are the same after cleaning punctuation
+      if (cleanRemovedPhrase === cleanAddedPhrase) {
+        i = j
+        continue
+      }
+
+      // Only consider it a phrase replacement if both parts exist and are substantial
+      const removedWords = cleanRemovedPhrase.split(/\s+/).filter((w) => w.length > 0)
+      const addedWords = cleanAddedPhrase.split(/\s+/).filter((w) => w.length > 0)
+
+      if (removedWords.length >= 2 && addedWords.length >= 1 && cleanRemovedPhrase !== cleanAddedPhrase) {
+        rules.push({
+          type: "phrase_replacement",
+          pattern: cleanRemovedPhrase,
+          replacement: cleanAddedPhrase,
+          frequency: 1,
+          confidence: 0.8,
+          description: `Replace phrase "${cleanRemovedPhrase}" with "${cleanAddedPhrase}"`,
+        })
+      }
+
+      i = j
+    } else {
+      i++
+    }
+  }
+
+  return rules
+}
+
+function detectToneAdjustments(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Enhanced informal to formal replacements
+  const informalToFormal = [
+    { informal: "cops", formal: "officers" },
+    { informal: "cop", formal: "officer" },
+    { informal: "talked to", formal: "interviewed" },
+    { informal: "spoke with", formal: "interviewed" },
+    { informal: "chatted with", formal: "interviewed" },
+    { informal: "guy", formal: "subject" },
+    { informal: "guys", formal: "subjects" },
+    { informal: "stuff", formal: "items" },
+    { informal: "things", formal: "items" },
+    { informal: "looked at", formal: "observed" },
+    { informal: "checked", formal: "inspected" },
+    { informal: "found", formal: "discovered" },
+    { informal: "saw", formal: "observed" },
+    { informal: "went", formal: "proceeded" },
+    { informal: "got", formal: "obtained" },
+    { informal: "gave", formal: "provided" },
+    { informal: "told", formal: "advised" },
+    { informal: "said", formal: "stated" },
+    { informal: "asked", formal: "inquired" },
+    { informal: "came", formal: "arrived" },
+    { informal: "left", formal: "departed" },
+    { informal: "walked", formal: "proceeded on foot" },
+    { informal: "ran", formal: "fled on foot" },
+    { informal: "grabbed", formal: "secured" },
+    { informal: "took", formal: "obtained" },
+    { informal: "put", formal: "placed" },
+    { informal: "showed", formal: "displayed" },
+    { informal: "heard", formal: "detected" },
+    { informal: "smelled", formal: "detected an odor of" },
+    { informal: "felt", formal: "observed" },
+  ]
+
+  informalToFormal.forEach(({ informal, formal }) => {
+    const informalRegex = new RegExp(`\\b${informal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+    const formalRegex = new RegExp(`\\b${formal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+
+    if (informalRegex.test(original) && formalRegex.test(edited)) {
+      rules.push({
+        type: "tone_adjustment",
+        pattern: informal,
+        replacement: formal,
+        frequency: 1,
+        confidence: 0.9,
+        description: `Replace informal "${informal}" with formal "${formal}"`,
+      })
+    }
+  })
+
+  // Detect removal of informal modifiers and filler words
+  const informalModifiers = [
+    "pretty",
+    "really",
+    "kinda",
+    "sorta",
+    "super",
+    "totally",
+    "basically",
+    "like",
+    "you know",
+    "um",
+    "uh",
+    "well",
+    "so",
+    "actually",
+    "just",
+    "quite",
+    "very",
+    "extremely",
+    "incredibly",
+    "absolutely",
+    "definitely",
+  ]
+
+  const diffs = createDiff(original, edited)
+
+  diffs.forEach((diff) => {
+    if (diff.type === "removed") {
+      const words = diff.value
+        .toLowerCase()
+        .replace(/[^\w\s]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length > 0)
+
+      words.forEach((word) => {
+        if (informalModifiers.includes(word)) {
+          rules.push({
+            type: "tone_adjustment",
+            pattern: word,
+            replacement: "",
+            frequency: 1,
+            confidence: 0.9,
+            description: `Remove informal modifier "${word}"`,
+          })
+        }
+      })
+    }
+  })
+
+  return rules
+}
+
+function detectConcisenessPatterns(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const originalWordCount = original.split(/\s+/).filter((word) => word.length > 0).length
+  const editedWordCount = edited.split(/\s+/).filter((word) => word.length > 0).length
+
+  // Detect significant word count reduction
+  if (editedWordCount < originalWordCount * 0.85) {
+    const reductionPercent = Math.round(((originalWordCount - editedWordCount) / originalWordCount) * 100)
+    rules.push({
+      type: "conciseness",
+      pattern: "verbose text",
+      replacement: "concise text",
+      frequency: 1,
+      confidence: 0.8,
+      description: `Reduced text by ${reductionPercent}% (${originalWordCount} → ${editedWordCount} words)`,
+    })
+  }
+
+  // Detect removal of redundant words and phrases
+  const redundantPhrases = [
+    "in order to",
+    "due to the fact that",
+    "at this point in time",
+    "for the purpose of",
+    "with regard to",
+    "in the event that",
+    "it should be noted that",
+    "it is important to note",
+    "please be advised",
+    "at the present time",
+    "in the near future",
+    "on a regular basis",
+    "in a timely manner",
+    "for all intents and purposes",
+  ]
+
+  const diffs = createDiff(original, edited)
+
+  diffs.forEach((diff) => {
+    if (diff.type === "removed") {
+      const removedText = diff.value.toLowerCase().trim()
+      redundantPhrases.forEach((phrase) => {
+        if (removedText.includes(phrase)) {
+          rules.push({
+            type: "conciseness",
+            pattern: phrase,
+            replacement: "",
+            frequency: 1,
+            confidence: 0.9,
+            description: `Remove redundant phrase "${phrase}"`,
+          })
+        }
+      })
+    }
+  })
+
+  return rules
+}
+
+function detectSentenceLengthPreference(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Split into sentences and analyze length changes
+  const originalSentences = original.split(/[.!?]+/).filter((s) => s.trim().length > 0)
+  const editedSentences = edited.split(/[.!?]+/).filter((s) => s.trim().length > 0)
+
+  const originalAvgLength =
+    originalSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0) / originalSentences.length
+  const editedAvgLength = editedSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0) / editedSentences.length
+
+  // Detect preference for shorter or longer sentences
+  if (editedAvgLength < originalAvgLength * 0.8) {
+    rules.push({
+      type: "sentence_length_preference",
+      pattern: "long sentences",
+      replacement: "short sentences",
+      frequency: 1,
+      confidence: 0.8,
+      description: `Prefers shorter sentences (avg ${originalAvgLength.toFixed(1)} → ${editedAvgLength.toFixed(1)} words)`,
+    })
+  } else if (editedAvgLength > originalAvgLength * 1.2) {
+    rules.push({
+      type: "sentence_length_preference",
+      pattern: "short sentences",
+      replacement: "long sentences",
+      frequency: 1,
+      confidence: 0.8,
+      description: `Prefers longer sentences (avg ${originalAvgLength.toFixed(1)} → ${editedAvgLength.toFixed(1)} words)`,
+    })
+  }
+
+  // Detect sentence combining or splitting
+  if (editedSentences.length < originalSentences.length) {
+    const reduction = originalSentences.length - editedSentences.length
+    rules.push({
+      type: "sentence_length_preference",
+      pattern: "multiple short sentences",
+      replacement: "combined longer sentences",
+      frequency: reduction,
+      confidence: 0.7,
+      description: `Combined ${originalSentences.length} sentences into ${editedSentences.length} sentences`,
+    })
+  } else if (editedSentences.length > originalSentences.length) {
+    const increase = editedSentences.length - originalSentences.length
+    rules.push({
+      type: "sentence_length_preference",
+      pattern: "long sentences",
+      replacement: "split shorter sentences",
+      frequency: increase,
+      confidence: 0.7,
+      description: `Split ${originalSentences.length} sentences into ${editedSentences.length} sentences`,
+    })
+  }
+
+  return rules
+}
+
+function detectVoiceChanges(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Enhanced passive to active voice changes
+  const passiveToActive = [
+    { passive: "was arrested", active: "I arrested" },
+    { passive: "was detained", active: "I detained" },
+    { passive: "was questioned", active: "I questioned" },
+    { passive: "was searched", active: "I searched" },
+    { passive: "was transported", active: "I transported" },
+    { passive: "was interviewed", active: "I interviewed" },
+    { passive: "was observed", active: "I observed" },
+    { passive: "was discovered", active: "I discovered" },
+    { passive: "was found", active: "I found" },
+    { passive: "was located", active: "I located" },
+    { passive: "was seized", active: "I seized" },
+    { passive: "was recovered", active: "I recovered" },
+    { passive: "was collected", active: "I collected" },
+    { passive: "was documented", active: "I documented" },
+    { passive: "was photographed", active: "I photographed" },
+    { passive: "was processed", active: "I processed" },
+    { passive: "was booked", active: "I booked" },
+    { passive: "was charged", active: "I charged" },
+    { passive: "was cited", active: "I cited" },
+    { passive: "was released", active: "I released" },
+    { passive: "were arrested", active: "officers arrested" },
+    { passive: "were detained", active: "officers detained" },
+    { passive: "were questioned", active: "officers questioned" },
+    { passive: "were searched", active: "officers searched" },
+    { passive: "were transported", active: "officers transported" },
+  ]
+
+  passiveToActive.forEach(({ passive, active }) => {
+    const passiveRegex = new RegExp(passive.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+    const activeRegex = new RegExp(active.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+
+    if (passiveRegex.test(original) && activeRegex.test(edited)) {
+      rules.push({
+        type: "voice_change",
+        pattern: passive,
+        replacement: active,
+        frequency: 1,
+        confidence: 0.8,
+        description: `Change from passive "${passive}" to active "${active}"`,
+      })
+    }
+  })
+
+  return rules
+}
+
+function detectActivePassiveVoice(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Detect general passive voice patterns
+  const passiveIndicators = [/\b(was|were|is|are|been|being)\s+\w+ed\b/gi, /\b(was|were|is|are|been|being)\s+\w+en\b/gi]
+
+  const originalPassiveCount = passiveIndicators.reduce((count, regex) => {
+    return count + (original.match(regex) || []).length
+  }, 0)
+
+  const editedPassiveCount = passiveIndicators.reduce((count, regex) => {
+    return count + (edited.match(regex) || []).length
+  }, 0)
+
+  // Detect active voice patterns (subject + action verb)
+  const activeIndicators = [
+    /\bI\s+(arrested|detained|questioned|searched|transported|interviewed|observed|discovered|found|located|seized|recovered|collected|documented|photographed|processed|booked|charged|cited|released)\b/gi,
+    /\b(officers?|police)\s+(arrested|detained|questioned|searched|transported|interviewed|observed|discovered|found|located|seized|recovered|collected|documented|photographed|processed|booked|charged|cited|released)\b/gi,
+  ]
+
+  const originalActiveCount = activeIndicators.reduce((count, regex) => {
+    return count + (original.match(regex) || []).length
+  }, 0)
+
+  const editedActiveCount = activeIndicators.reduce((count, regex) => {
+    return count + (edited.match(regex) || []).length
+  }, 0)
+
+  // Determine voice preference
+  if (originalPassiveCount > editedPassiveCount && editedActiveCount > originalActiveCount) {
+    const reduction = originalPassiveCount - editedPassiveCount
+    rules.push({
+      type: "active_passive_voice",
+      pattern: "passive voice",
+      replacement: "active voice",
+      frequency: reduction,
+      confidence: 0.8,
+      description: `Prefers active voice - reduced passive constructions by ${reduction}`,
+    })
+  } else if (originalActiveCount > editedActiveCount && editedPassiveCount > originalPassiveCount) {
+    const increase = editedPassiveCount - originalPassiveCount
+    rules.push({
+      type: "active_passive_voice",
+      pattern: "active voice",
+      replacement: "passive voice",
+      frequency: increase,
+      confidence: 0.8,
+      description: `Prefers passive voice - increased passive constructions by ${increase}`,
+    })
+  }
+
+  return rules
+}
+
+function detectTimeFormatting(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Detect various time format patterns with more specificity
+  const timePatterns = {
+    "12-hour AM/PM": /\b(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi,
+    "24-hour military colon": /\b(\d{1,2}):(\d{2})\s*hours?\b/gi,
+    "24-hour military no-colon": /\b(\d{4})\s*hours?\b/gi,
+    "approximate 12-hour": /\bat\s*approximately\s*(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi,
+    "approximate 24-hour": /\bat\s*approximately\s*(\d{1,2}):(\d{2})\s*hours?\b/gi,
+  }
+
+  const originalFormats: { [key: string]: RegExpMatchArray[] } = {}
+  const editedFormats: { [key: string]: RegExpMatchArray[] } = {}
+
+  // Collect actual matches, not just counts
+  Object.entries(timePatterns).forEach(([formatName, regex]) => {
+    originalFormats[formatName] = Array.from(original.matchAll(regex))
+    editedFormats[formatName] = Array.from(edited.matchAll(regex))
+  })
+
+  // Detect specific format changes
+  const original12Hour = originalFormats["12-hour AM/PM"]
+  const edited24HourColon = editedFormats["24-hour military colon"]
+  const editedApprox24Hour = editedFormats["approximate 24-hour"]
+
+  if (original12Hour.length > 0 && (edited24HourColon.length > 0 || editedApprox24Hour.length > 0)) {
+    rules.push({
+      type: "time_format",
+      pattern: "12-hour AM/PM format",
+      replacement: "24-hour colon format",
+      frequency: original12Hour.length,
+      confidence: 0.95,
+      description: "Convert 12-hour time to 24-hour format with colon (e.g., 3:30 PM → 15:30 hours)",
+    })
+  }
+
+  // Check for approximate time formatting changes
+  const originalApprox12 = originalFormats["approximate 12-hour"]
+  if (originalApprox12.length > 0 && editedApprox24Hour.length > 0) {
+    rules.push({
+      type: "time_format",
+      pattern: "approximate 12-hour format",
+      replacement: "approximate 24-hour format",
+      frequency: originalApprox12.length,
+      confidence: 0.9,
+      description:
+        "Convert approximate times to 24-hour format (e.g., approximately 3:30 PM → approximately 15:30 hours)",
+    })
+  }
+
+  return rules
+}
+
+function detectPunctuationStyle(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Detect Oxford comma additions
+  const oxfordCommaPattern = /(\w+),\s*(\w+),?\s*and\s+(\w+)/g
+  const originalOxford = (original.match(oxfordCommaPattern) || []).length
+  const editedOxford = (edited.match(oxfordCommaPattern) || []).length
+
+  if (editedOxford > originalOxford) {
+    rules.push({
+      type: "punctuation_style",
+      pattern: "lists without Oxford comma",
+      replacement: "lists with Oxford comma",
+      frequency: editedOxford - originalOxford,
+      confidence: 0.8,
+      description: "Add Oxford comma before 'and' in lists",
+    })
+  }
+
+  // Detect semicolon usage
+  const originalSemicolons = (original.match(/;/g) || []).length
+  const editedSemicolons = (edited.match(/;/g) || []).length
+
+  if (editedSemicolons > originalSemicolons) {
+    rules.push({
+      type: "punctuation_style",
+      pattern: "comma separation",
+      replacement: "semicolon separation",
+      frequency: editedSemicolons - originalSemicolons,
+      confidence: 0.7,
+      description: "Use semicolons to separate complex clauses",
+    })
+  }
+
+  // Detect quotation mark style changes
+  const originalSingleQuotes = (original.match(/'/g) || []).length
+  const originalDoubleQuotes = (original.match(/"/g) || []).length
+  const editedSingleQuotes = (edited.match(/'/g) || []).length
+  const editedDoubleQuotes = (edited.match(/"/g) || []).length
+
+  if (originalSingleQuotes > 0 && editedDoubleQuotes > originalDoubleQuotes) {
+    rules.push({
+      type: "punctuation_style",
+      pattern: "single quotes",
+      replacement: "double quotes",
+      frequency: 1,
+      confidence: 0.8,
+      description: "Use double quotes instead of single quotes",
+    })
+  }
+
+  return rules
+}
+
+function detectCapitalizationPatterns(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const diffs = createDiff(original, edited)
+
+  // Look for capitalization changes
+  for (let i = 0; i < diffs.length - 1; i++) {
+    if (diffs[i].type === "removed" && diffs[i + 1].type === "added") {
+      const removedText = diffs[i].value.trim()
+      const addedText = diffs[i + 1].value.trim()
+
+      // Check if it's just a capitalization change (same letters, different case)
+      if (
+        removedText.toLowerCase() === addedText.toLowerCase() &&
+        removedText !== addedText &&
+        /^[a-zA-Z\s]+$/.test(removedText) && // Only letters and spaces
+        /^[a-zA-Z\s]+$/.test(addedText)
+      ) {
+        rules.push({
+          type: "capitalization",
+          pattern: removedText.toLowerCase(),
+          replacement: addedText.toLowerCase(),
+          frequency: 1,
+          confidence: 0.9,
+          description: `Capitalize "${removedText}" to "${addedText}"`,
+        })
+      }
+    }
+  }
+
+  return rules
+}
+
+function detectNumberFormatting(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  // Detect number to word conversions
+  const numberWords = {
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine",
+    "10": "ten",
+  }
+
+  Object.entries(numberWords).forEach(([num, word]) => {
+    const numRegex = new RegExp(`\\b${num}\\b`, "g")
+    const wordRegex = new RegExp(`\\b${word}\\b`, "gi")
+
+    if (numRegex.test(original) && wordRegex.test(edited)) {
+      rules.push({
+        type: "number_format",
+        pattern: num,
+        replacement: word,
+        frequency: 1,
+        confidence: 0.8,
+        description: `Convert number "${num}" to word "${word}"`,
+      })
+    }
+  })
+
+  return rules
+}
+
+function detectProfessionalTerminology(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  if (original.trim() === edited.trim()) return rules
+
+  const professionalTerms = [
+    { informal: "guy", formal: "suspect" },
+    { informal: "guys", formal: "suspects" },
+    { informal: "subject", formal: "individual" },
+    { informal: "stuff", formal: "items" },
+    { informal: "things", formal: "items" },
+    { informal: "arrested", formal: "took into custody" },
+    { informal: "questioned", formal: "interviewed" },
+    { informal: "looked at", formal: "examined" },
+    { informal: "checked", formal: "inspected" },
+    { informal: "found", formal: "discovered" },
+    { informal: "saw", formal: "observed" },
+    { informal: "went", formal: "proceeded" },
+    { informal: "got", formal: "obtained" },
+    { informal: "gave", formal: "provided" },
+    { informal: "told", formal: "advised" },
+    { informal: "said", formal: "stated" },
+    { informal: "asked", formal: "inquired" },
+    { informal: "came", formal: "arrived" },
+    { informal: "left", formal: "departed" },
+    { informal: "walked", formal: "proceeded on foot" },
+    { informal: "ran", formal: "fled on foot" },
+    { informal: "grabbed", formal: "secured" },
+    { informal: "took", formal: "obtained" },
+    { informal: "put", formal: "placed" },
+    { informal: "showed", formal: "displayed" },
+    { informal: "heard", formal: "detected" },
+    { informal: "smelled", formal: "detected an odor of" },
+    { informal: "felt", formal: "observed" },
+  ]
+
+  professionalTerms.forEach(({ informal, formal }) => {
+    const informalRegex = new RegExp(`\\b${informal}\\b`, "gi")
+    const formalRegex = new RegExp(`\\b${formal}\\b`, "gi")
+
+    if (informalRegex.test(original) && formalRegex.test(edited)) {
+      rules.push({
+        type: "professional_terminology",
+        pattern: informal,
+        replacement: formal,
+        frequency: 1,
+        confidence: 0.9,
+        description: `Use professional term "${formal}" instead of "${informal}"`,
+      })
+    }
+  })
+
+  return rules
+}
+
+// Visual diff component for displaying changes
+interface VisualDiffProps {
+  original: string
+  edited: string
+  title: string
+}
+
+function VisualDiff({ original, edited, title }: VisualDiffProps) {
+  const diffs = createDiff(original, edited)
+
+  return (
+    <div className="bg-green-900/20 border border-green-500/30 p-4 rounded text-white/80 text-sm h-64 overflow-y-auto">
+      <h5 className="font-medium mb-2 text-green-400">{title}</h5>
+      <div className="leading-relaxed">
+        {diffs.map((diff, index) => {
+          if (diff.type === "unchanged") {
+            return <span key={index}>{diff.value}</span>
+          } else if (diff.type === "removed") {
+            return (
+              <span key={index} className="bg-red-500/20 text-red-300 line-through" title="Removed text">
+                {diff.value}
+              </span>
+            )
+          } else if (diff.type === "added") {
+            return (
+              <span key={index} className="bg-green-500/20 text-green-300 font-bold" title="Added text">
+                {diff.value}
+              </span>
+            )
+          }
+          return null
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default function TrainingPage() {
+  const router = useRouter()
+  const [reports, setReports] = useState<Report[]>(sampleReports)
+  const [activeTab, setActiveTab] = useState("edit")
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [isTraining, setIsTraining] = useState(false)
+  const [isTrainingComplete, setIsTrainingComplete] = useState(false)
+  const [styleRules, setStyleRules] = useState<StyleRule[]>([])
+  const [suggestedEdits, setSuggestedEdits] = useState("")
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [intensityLevel, setIntensityLevel] = useState([50])
+  const [appliedPatterns, setAppliedPatterns] = useState<AppliedPattern[]>([])
+
+  const editedReportsCount = reports.filter((r) => r.isEdited).length
+
+  const handleReportEdit = (reportId: number, newText: string) => {
+    setReports((prev) =>
+      prev.map((report) =>
+        report.id === reportId ? { ...report, editedText: newText, isEdited: newText.trim() !== "" } : report,
+      ),
+    )
+
+    if (selectedReport && selectedReport.id === reportId) {
+      setSelectedReport((prev) => (prev ? { ...prev, editedText: newText, isEdited: newText.trim() !== "" } : null))
+    }
+  }
+
+  const analyzeEdits = async () => {
+    setIsTraining(true)
+    console.log("🚀 Starting AI training process...")
+    console.log(`📊 Training with ${editedReportsCount} edited reports`)
+
+    // Banned words that should not be used in patterns
+    const bannedWords = [
+      "a",
+      "an",
+      "the",
+      "to",
+      "from",
+      "of",
+      "by",
+      "for",
+      "on",
+      "at",
+      "in",
+      "with",
+      "and",
+      "but",
+      "or",
+      "so",
+      "if",
+      "because",
+      "than",
+      "as",
+      "is",
+      "was",
+      "are",
+      "be",
+      "been",
+      "being",
+      "has",
+      "have",
+      "had",
+      "will",
+      "would",
+      "could",
+      "should",
+      "may",
+      "might",
+      "can",
+      "do",
+      "does",
+      "did",
+      "this",
+      "that",
+      "these",
+      "those",
+      "it",
+      "its",
+      "he",
+      "she",
+      "him",
+      "her",
+      "his",
+      "hers",
+      "they",
+      "them",
+      "their",
+      "theirs",
+      "we",
+      "us",
+      "our",
+      "ours",
+      "you",
+      "your",
+      "yours",
+      "i",
+      "me",
+      "my",
+      "mine",
+    ]
+
+    console.log("🧠 Starting with enhanced pattern detection...")
+    const allRules: StyleRule[] = []
+
+    // First pass: collect all patterns from each report
+    reports.forEach((report, index) => {
+      if (report.isEdited && report.editedText && report.editedText.trim() !== report.originalText.trim()) {
+        console.log(`📝 Analyzing report ${index + 1}: ${report.title}`)
+        console.log(`  Original length: ${report.originalText.length} chars`)
+        console.log(`  Edited length: ${report.editedText.length} chars`)
+
+        // Apply all detection methods with enhanced accuracy
+        const wordRules = detectWordReplacements(report.originalText, report.editedText)
+        const phraseRules = detectPhraseReplacements(report.originalText, report.editedText)
+        const multiWordRules = detectMultiWordReplacements(report.originalText, report.editedText)
+        const toneRules = detectToneAdjustments(report.originalText, report.editedText)
+        const concisenessRules = detectConcisenessPatterns(report.originalText, report.editedText)
+        const sentenceLengthRules = detectSentenceLengthPreference(report.originalText, report.editedText)
+        const voiceRules = detectVoiceChanges(report.originalText, report.editedText)
+        const activePassiveRules = detectActivePassiveVoice(report.originalText, report.editedText)
+        const timeRules = detectTimeFormatting(report.originalText, report.editedText)
+        const punctuationRules = detectPunctuationStyle(report.originalText, report.editedText)
+        const capitalizationRules = detectCapitalizationPatterns(report.originalText, report.editedText)
+        const numberRules = detectNumberFormatting(report.originalText, report.editedText)
+        const professionalRules = detectProfessionalTerminology(report.originalText, report.editedText)
+
+        const reportRules = [
+          ...wordRules,
+          ...phraseRules,
+          ...multiWordRules,
+          ...toneRules,
+          ...concisenessRules,
+          ...sentenceLengthRules,
+          ...voiceRules,
+          ...activePassiveRules,
+          ...timeRules,
+          ...punctuationRules,
+          ...capitalizationRules,
+          ...numberRules,
+          ...professionalRules,
+        ]
+
+        // Add report ID to each rule for tracking
+        reportRules.forEach((rule) => {
+          rule.reportId = report.id
+        })
+
+        console.log(`  └─ Found ${reportRules.length} patterns in this report`)
+        reportRules.forEach((rule) => {
+          console.log(`    • ${rule.type}: "${rule.pattern}" → "${rule.replacement}"`)
+        })
+
+        allRules.push(...reportRules)
+      } else if (report.isEdited) {
+        console.log(`⚠️ Report ${index + 1} marked as edited but no actual changes detected`)
+      }
+    })
+
+    console.log(`🔍 Total patterns found across all reports: ${allRules.length}`)
+
+    // Filter out patterns with banned words
+    const filteredRules = allRules.filter((rule) => {
+      const patternWords = rule.pattern.toLowerCase().split(/\s+/)
+      const replacementWords = rule.replacement.toLowerCase().split(/\s+/)
+
+      // Check if any word in pattern or replacement is banned
+      const hasBannedPattern = patternWords.some((word) => bannedWords.includes(word))
+      const hasBannedReplacement = replacementWords.some((word) => bannedWords.includes(word))
+
+      if (hasBannedPattern || hasBannedReplacement) {
+        console.log(`❌ Filtered out banned word pattern: ${rule.pattern} → ${rule.replacement}`)
+        return false
+      }
+      return true
+    })
+
+    console.log(`🔍 After filtering banned words: ${filteredRules.length} patterns`)
+
+    // NEW RULE: Group patterns by their signature and only keep those with 2+ occurrences
+    const patternMap = new Map<string, StyleRule[]>()
+
+    filteredRules.forEach((rule) => {
+      const signature = `${rule.type}:${rule.pattern.toLowerCase()}:${rule.replacement.toLowerCase()}`
+      if (!patternMap.has(signature)) {
+        patternMap.set(signature, [])
+      }
+      patternMap.get(signature)!.push(rule)
+    })
+
+    const validPatterns: StyleRule[] = []
+
+    patternMap.forEach((rules, signature) => {
+      if (rules.length >= 2) {
+        // This pattern occurs 2+ times - include it
+        const uniqueReports = new Set(rules.map((r) => r.reportId))
+
+        let confidence = 1.0 // Default high confidence for 2+ occurrences
+        let description = rules[0].description || ""
+
+        if (uniqueReports.size >= 2) {
+          // Cross-report pattern - highest confidence
+          confidence = 1.0
+          description += ` (appears in ${uniqueReports.size} reports, ${rules.length} times)`
+        } else {
+          // Same report pattern - still high confidence since it's repeated
+          confidence = 0.9
+          description += ` (appears ${rules.length} times in same report)`
+        }
+
+        const consolidatedRule: StyleRule = {
+          type: rules[0].type,
+          pattern: rules[0].pattern,
+          replacement: rules[0].replacement,
+          frequency: rules.length,
+          confidence: confidence,
+          description: description,
+          reportIds: Array.from(uniqueReports),
+        }
+
+        validPatterns.push(consolidatedRule)
+        console.log(`✅ Valid pattern: ${signature} (${rules.length} occurrences, ${uniqueReports.size} reports)`)
+      } else {
+        console.log(`❌ Single occurrence pattern excluded: ${signature}`)
+      }
+    })
+
+    console.log(`📈 Final patterns: ${validPatterns.length}`)
+
+    if (validPatterns.length > 0) {
+      console.log("🎯 Final pattern breakdown:")
+      const patternTypes = validPatterns.reduce(
+        (acc, rule) => {
+          acc[rule.type] = (acc[rule.type] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>,
+      )
+
+      Object.entries(patternTypes).forEach(([type, count]) => {
+        console.log(`  └─ ${type}: ${count} patterns`)
+      })
+    } else {
+      console.log("⚠️ No valid patterns detected. Patterns must occur 2+ times to be included.")
+    }
+
+    setTimeout(() => {
+      setStyleRules(validPatterns)
+      setIsTraining(false)
+      setIsTrainingComplete(true)
+      setActiveTab("patterns")
+
+      console.log("✅ Training complete!")
+      console.log(`🎉 AI trained with ${validPatterns.length} style patterns`)
+      console.log("🔧 Method used: 2+ Occurrence Pattern Analysis with Enhanced Detection")
+    }, 2000)
+  }
+
+  const applySupervisorStyle = async () => {
+    console.log("🎨 Applying learned style to test report...")
+    console.log(`⚡ Intensity level: ${intensityLevel[0]}%`)
+    console.log(`📋 Available patterns: ${styleRules.length}`)
+
+    if (styleRules.length === 0) {
+      console.log("❌ No patterns available to apply - returning original text unchanged")
+      setSuggestedEdits(testReport.originalText)
+      setShowSuggestions(true)
+      setAppliedPatterns([])
+      return
+    }
+
+    let editedText = testReport.originalText
+    const intensity = intensityLevel[0] / 100
+    let changesApplied = 0
+    const patternsUsed: AppliedPattern[] = []
+
+    // Local application with proper intensity control and confidence weighting
+    console.log("🧠 Applying patterns locally with confidence weighting...")
+
+    // Sort rules by confidence and frequency for better application
+    const sortedRules = styleRules.sort((a, b) => {
+      const aScore = (a.confidence || 0.5) * a.frequency
+      const bScore = (b.confidence || 0.5) * b.frequency
+      return bScore - aScore
+    })
+
+    // Improved local application
+    sortedRules.forEach((rule, index) => {
+      const confidenceThreshold = (rule.confidence || 0.5) * intensity
+      const shouldApply = Math.random() < confidenceThreshold
+
+      console.log(
+        `📝 Pattern ${index + 1}/${sortedRules.length}: ${rule.type} - ${rule.pattern} (confidence: ${rule.confidence}, threshold: ${confidenceThreshold.toFixed(2)}) → ${shouldApply ? "APPLYING" : "SKIPPING"}`,
+      )
+
+      if (shouldApply) {
+        const beforeText = editedText
+
+        switch (rule.type) {
+          case "word_replacement":
+          case "phrase_replacement":
+          case "multi_word_replacement":
+            const regex = new RegExp(`\\b${rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+            editedText = editedText.replace(regex, rule.replacement)
+            break
+          case "professional_terminology":
+            const profRegex = new RegExp(`\\b${rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+            editedText = editedText.replace(profRegex, rule.replacement)
+            break
+          case "tone_adjustment":
+            if (rule.replacement === "") {
+              // Remove informal modifiers
+              const informalRegex = new RegExp(`\\b${rule.pattern}\\b`, "gi")
+              editedText = editedText.replace(informalRegex, "")
+              editedText = editedText.replace(/\s+/g, " ").trim()
+            } else {
+              // Replace informal with formal
+              const toneRegex = new RegExp(`\\b${rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+              editedText = editedText.replace(toneRegex, rule.replacement)
+            }
+            break
+          case "time_format":
+            if (rule.pattern.includes("12-hour") && rule.replacement.includes("24-hour")) {
+              // Handle regular 12-hour to 24-hour conversion with colon
+              editedText = editedText.replace(/\b(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi, (match, hour, minute, period) => {
+                let hour24 = Number.parseInt(hour)
+                if (period.toUpperCase() === "PM" && hour24 !== 12) hour24 += 12
+                if (period.toUpperCase() === "AM" && hour24 === 12) hour24 = 0
+                return `${hour24.toString().padStart(2, "0")}:${minute} hours`
+              })
+
+              // Handle approximate times
+              editedText = editedText.replace(
+                /\bat\s*approximately\s*(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi,
+                (match, prefix, hour, minute, period) => {
+                  let hour24 = Number.parseInt(hour)
+                  if (period.toUpperCase() === "PM" && hour24 !== 12) hour24 += 12
+                  if (period.toUpperCase() === "AM" && hour24 === 12) hour24 = 0
+                  return `at approximately ${hour24.toString().padStart(2, "0")}:${minute} hours`
+                },
+              )
+            }
+            break
+          case "conciseness":
+            // Remove unnecessary words
+            editedText = editedText.replace(/\b(that|which|who)\b/gi, "")
+            editedText = editedText.replace(/\s+/g, " ").trim()
+            break
+          case "sentence_length_preference":
+            // This would require more complex sentence restructuring
+            break
+          case "voice_change":
+          case "active_passive_voice":
+            const voiceRegex = new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+            editedText = editedText.replace(voiceRegex, rule.replacement)
+            break
+          case "capitalization":
+            const capRegex = new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+            editedText = editedText.replace(capRegex, rule.replacement)
+            break
+          case "number_format":
+            const numRegex = new RegExp(`\\b${rule.pattern}\\b`, "g")
+            editedText = editedText.replace(numRegex, rule.replacement)
+            break
+          case "punctuation_style":
+            // Handle punctuation changes based on the specific rule
+            if (rule.pattern.includes("Oxford comma")) {
+              editedText = editedText.replace(/(\w+),\s*(\w+)\s+and\s+(\w+)/g, "$1, $2, and $3")
+            }
+            break
+        }
+
+        if (beforeText !== editedText) {
+          changesApplied++
+          patternsUsed.push({
+            rule,
+            applied: true,
+            reason: "Successfully applied",
+          })
+          console.log(`  └─ ✅ Change applied successfully`)
+        } else {
+          patternsUsed.push({
+            rule,
+            applied: false,
+            reason: "Pattern applied but no text change occurred",
+          })
+          console.log(`  └─ ⚠️ Pattern applied but no text change occurred`)
+        }
+      } else {
+        patternsUsed.push({
+          rule,
+          applied: false,
+          reason: `Skipped due to intensity threshold (${confidenceThreshold.toFixed(2)})`,
+        })
+      }
+    })
+
+    setSuggestedEdits(editedText)
+    setShowSuggestions(true)
+    setAppliedPatterns(patternsUsed)
+
+    console.log(`🎉 Style application complete!`)
+    console.log(`📊 Total changes applied: ${changesApplied}`)
+    console.log(`🔧 Method used: Local Pattern Application with Enhanced Confidence Weighting`)
+
+    if (changesApplied === 0) {
+      console.log("⚠️ No changes were applied. Try increasing intensity or check if patterns match the test text.")
+    }
+  }
+
+  // Group patterns by type for better display
+  const groupedPatterns = styleRules.reduce(
+    (acc, rule) => {
+      if (!acc[rule.type]) {
+        acc[rule.type] = []
+      }
+      acc[rule.type].push(rule)
+      return acc
+    },
+    {} as Record<string, StyleRule[]>,
+  )
+
+  return (
+    <div className="min-h-screen bg-black text-white font-geist">
+      <div className="p-6">
+        <Button onClick={() => router.push("/")} variant="ghost" className="text-white hover:bg-white/10 mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Home
+        </Button>
+
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Progress Overview */}
+          <Card className="bg-white/5 border-white/10">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                Training Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white/80">Reports Edited: {editedReportsCount}/5</span>
+                <Badge variant={editedReportsCount === 5 ? "default" : "secondary"}>
+                  {editedReportsCount === 5 ? "Ready to Train" : "In Progress"}
+                </Badge>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2">
+                <div
+                  className="bg-white h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(editedReportsCount / 5) * 100}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 bg-white/10">
+              <TabsTrigger value="edit" className="data-[state=active]:bg-white data-[state=active]:text-black">
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Reports
+              </TabsTrigger>
+              <TabsTrigger value="patterns" className="data-[state=active]:bg-white data-[state=active]:text-black">
+                <Brain className="w-4 h-4 mr-2" />
+                Patterns
+              </TabsTrigger>
+              <TabsTrigger value="test" className="data-[state=active]:bg-white data-[state=active]:text-black">
+                <Zap className="w-4 h-4 mr-2" />
+                Test Style
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="edit" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Report List */}
+                <Card className="bg-white/5 border-white/10">
+                  <CardHeader>
+                    <CardTitle className="text-white">Sample Reports</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {reports.map((report) => (
+                      <div
+                        key={report.id}
+                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedReport?.id === report.id
+                            ? "border-white bg-white/10"
+                            : "border-white/20 bg-white/5 hover:bg-white/10"
+                        }`}
+                        onClick={() => setSelectedReport(report)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{report.title}</h3>
+                          <div className="flex items-center gap-2">
+                            {selectedReport?.id === report.id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-white/20 text-white/80 hover:bg-white/10 bg-transparent"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  console.log(`📋 Copying original text for report: ${report.title}`)
+                                  handleReportEdit(report.id, report.originalText)
+                                }}
+                              >
+                                Copy Original
+                              </Button>
+                            )}
+                            {report.isEdited && <CheckCircle className="w-5 h-5 text-green-400" />}
+                          </div>
+                        </div>
+                        <p className="text-white/60 text-sm mt-1">{report.originalText.substring(0, 100)}...</p>
+                      </div>
+                    ))}
+
+                    {/* Train Button */}
+                    {editedReportsCount === 5 && !isTrainingComplete && (
+                      <div className="pt-4 border-t border-white/10">
+                        <Button
+                          onClick={analyzeEdits}
+                          disabled={isTraining}
+                          className="w-full bg-white text-black hover:bg-gray-200"
+                        >
+                          {isTraining ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+                              Training AI...
+                            </>
+                          ) : (
+                            <>
+                              <Brain className="w-4 h-4 mr-2" />
+                              Train AI
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Editor */}
+                <Card className="bg-white/5 border-white/10">
+                  <CardHeader>
+                    <CardTitle className="text-white">
+                      {selectedReport ? `Edit: ${selectedReport.title}` : "Select a Report to Edit"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {selectedReport ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-white/80 text-sm block mb-2">Original Text:</label>
+                          <div className="bg-white/10 p-3 rounded border text-white/70 text-sm max-h-32 overflow-y-auto">
+                            {selectedReport.originalText}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-white/80 text-sm block mb-2">Your Edited Version:</label>
+                          <textarea
+                            className="w-full h-48 p-3 bg-white/10 border border-white/20 rounded text-white placeholder-white/40 resize-none focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40"
+                            placeholder="Edit the report to match your preferred style..."
+                            value={selectedReport.editedText}
+                            onChange={(e) => handleReportEdit(selectedReport.id, e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-white/60 py-12">
+                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>Select a report from the list to begin editing</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="patterns" className="space-y-6">
+              <Card className="bg-white/5 border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Brain className="w-5 h-5" />
+                    Learned Style Patterns
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!isTrainingComplete ? (
+                    <div className="text-center py-12">
+                      <Brain className="w-16 h-16 mx-auto mb-4 text-white/40" />
+                      <h3 className="text-white text-lg mb-2">No Patterns Yet</h3>
+                      <p className="text-white/60">Complete the training process to see learned patterns</p>
+                    </div>
+                  ) : styleRules.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Brain className="w-16 h-16 mx-auto mb-4 text-white/40" />
+                      <h3 className="text-white text-lg mb-2">No Patterns Detected</h3>
+                      <p className="text-white/60">Try making more significant edits to the reports</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="bg-white/10 border-white/20">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2">
+                              <Brain className="w-5 h-5 text-white/80" />
+                              <div>
+                                <p className="text-white font-medium">{styleRules.length}</p>
+                                <p className="text-white/60 text-sm">Total Patterns</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-white/10 border-white/20">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-white/80" />
+                              <div>
+                                <p className="text-white font-medium">
+                                  {Math.round(
+                                    (styleRules.reduce((acc, rule) => acc + (rule.confidence || 0), 0) /
+                                      styleRules.length) *
+                                      100,
+                                  )}
+                                  %
+                                </p>
+                                <p className="text-white/60 text-sm">Avg Confidence</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-white/10 border-white/20">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-5 h-5 text-white/80" />
+                              <div>
+                                <p className="text-white font-medium">{Object.keys(groupedPatterns).length}</p>
+                                <p className="text-white/60 text-sm">Pattern Types</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Pattern Groups */}
+                      <div className="space-y-4">
+                        {Object.entries(groupedPatterns).map(([type, patterns]) => (
+                          <Card key={type} className="bg-white/10 border-white/20">
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-white text-sm">
+                                {type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} ({patterns.length})
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {patterns.map((pattern, index) => (
+                                  <div key={index} className="bg-white/5 p-3 rounded border border-white/10">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                                        {pattern.confidence && `${Math.round(pattern.confidence * 100)}% confidence`}
+                                      </Badge>
+                                      {pattern.frequency > 1 && (
+                                        <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                                          {pattern.frequency}x
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-red-300 font-mono bg-red-500/20 px-2 py-1 rounded">
+                                          {pattern.pattern}
+                                        </span>
+                                        <span className="text-white/60">→</span>
+                                        <span className="text-green-300 font-mono bg-green-500/20 px-2 py-1 rounded">
+                                          {pattern.replacement}
+                                        </span>
+                                      </div>
+                                      {pattern.description && (
+                                        <p className="text-white/60 text-xs">{pattern.description}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="test" className="space-y-6">
+              <Card className="bg-white/5 border-white/10">
+                <CardHeader>
+                  <CardTitle className="text-white">Test Learned Style</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {!isTrainingComplete ? (
+                    <div className="text-center py-12">
+                      <Zap className="w-16 h-16 mx-auto mb-4 text-white/40" />
+                      <h3 className="text-white text-lg mb-2">Training Required</h3>
+                      <p className="text-white/60">Complete the training process before testing the AI</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Intensity Control */}
+                      <Card className="bg-white/10 border-white/20">
+                        <CardHeader>
+                          <CardTitle className="text-white text-sm flex items-center gap-2">
+                            <Settings className="w-4 h-4" />
+                            Style Application Intensity
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-white/80 text-sm">Intensity Level:</span>
+                              <span className="text-white font-medium">{intensityLevel[0]}%</span>
+                            </div>
+                            <Slider
+                              value={intensityLevel}
+                              onValueChange={setIntensityLevel}
+                              max={100}
+                              min={0}
+                              step={10}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-white/60">
+                              <span>Conservative</span>
+                              <span>Aggressive</span>
+                            </div>
+                            <p className="text-white/60 text-xs">
+                              Higher intensity applies learned rules more aggressively based on confidence scores
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-white font-medium mb-3">New Report (Unedited):</h4>
+                          <div className="bg-white/10 p-4 rounded border text-white/80 text-sm h-64 overflow-y-auto">
+                            <h5 className="font-medium mb-2">{testReport.title}</h5>
+                            {testReport.originalText}
+                          </div>
+                          <Button
+                            onClick={applySupervisorStyle}
+                            className="w-full mt-4 bg-white text-black hover:bg-gray-200"
+                          >
+                            <Zap className="w-4 h-4 mr-2" />
+                            Apply Learned Style
+                          </Button>
+                        </div>
+
+                        <div>
+                          <h4 className="text-white font-medium mb-3">AI Suggestions:</h4>
+                          {showSuggestions ? (
+                            <VisualDiff
+                              original={testReport.originalText}
+                              edited={suggestedEdits}
+                              title={`${testReport.title} (AI Edited)`}
+                            />
+                          ) : (
+                            <div className="bg-white/5 p-4 rounded border-2 border-dashed border-white/20 h-64 flex items-center justify-center">
+                              <p className="text-white/40 text-center">
+                                Click "Apply Learned Style" to see AI suggestions
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Applied Patterns Section */}
+                      {showSuggestions && appliedPatterns.filter((p) => p.applied).length > 0 && (
+                        <Card className="bg-white/10 border-white/20">
+                          <CardHeader>
+                            <CardTitle className="text-white text-sm flex items-center gap-2">
+                              <Brain className="w-4 h-4" />
+                              Patterns Applied to Test Report
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              {appliedPatterns
+                                .filter((pattern) => pattern.applied)
+                                .map((appliedPattern, index) => (
+                                  <div key={index} className="bg-white/5 p-3 rounded border border-white/10">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <Badge variant="outline" className="text-xs border-white/20 text-green-300">
+                                        ✓ Applied
+                                      </Badge>
+                                      <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                                        {appliedPattern.rule.type.replace(/_/g, " ")}
+                                      </Badge>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-red-300 font-mono bg-red-500/20 px-2 py-1 rounded">
+                                          {appliedPattern.rule.pattern}
+                                        </span>
+                                        <span className="text-white/60">→</span>
+                                        <span className="text-green-300 font-mono bg-green-500/20 px-2 py-1 rounded">
+                                          {appliedPattern.rule.replacement}
+                                        </span>
+                                      </div>
+                                      {appliedPattern.reason && (
+                                        <p className="text-white/60 text-xs">{appliedPattern.reason}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  )
+}
