@@ -1,618 +1,549 @@
-/**
- * STYLE PATTERN DETECTION RULES
- *
- * This file contains all the style pattern detection logic for the AI training system.
- * Each function detects specific types of writing style patterns from user edits.
- *
- * RULE TYPES:
- * - word_replacement: Single word to single word changes
- * - phrase_replacement: Multi-word phrase changes
- * - multi_word_replacement: Word count changes (1→2, 2→1, etc.)
- * - tone_adjustment: Informal to formal language changes
- * - conciseness: Text reduction and redundant word removal
- * - sentence_length_preference: Preference for shorter/longer sentences
- * - voice_change: Specific passive to active voice changes
- * - active_passive_voice: General voice preference patterns
- * - time_format: Time formatting preferences (12hr→24hr, colon usage, etc.)
- * - punctuation_style: Punctuation preferences (Oxford comma, quotes, etc.)
- * - capitalization: Capitalization pattern changes
- * - number_format: Number to word conversions
- * - professional_terminology: Informal to professional term changes
- * - redundant_words: Removal of unnecessary/redundant words
- */
-
 import { diffWords } from "diff"
+import { detectPhraseChanges } from "./wink-phrase-detector"
 
 export interface StyleRule {
   type:
-    | "word_replacement"
+    | "passive_to_active"
+    | "active_to_passive"
     | "tone_adjustment"
-    | "conciseness"
-    | "voice_change"
     | "phrase_replacement"
-    | "sentence_structure"
-    | "punctuation_style"
-    | "capitalization"
-    | "number_format"
+    | "multi_word_phrase"
     | "time_format"
-    | "professional_terminology"
-    | "multi_word_replacement"
-    | "sentence_length_preference"
-    | "active_passive_voice"
-    | "redundant_words"
+    | "conciseness"
+    | "word_replacement"
   pattern: string
   replacement: string
   frequency: number
-  description?: string
-  confidence?: number
+  confidence: number
+  description: string
   reportId?: number
   reportIds?: number[]
+  regex?: string
 }
 
-export interface TextDiff {
-  type: "added" | "removed" | "unchanged"
-  value: string
+export interface VoicePreference {
+  preference: "active" | "passive"
+  confidence: number
+  passiveToActiveCount: number
+  activeToPassiveCount: number
+  totalSentencesAnalyzed: number
 }
+
+// Predefined informal words to check for tone adjustments
+const INFORMAL_WORDS = [
+  { informal: "cops", formal: "officers" },
+  { informal: "guy", formal: "individual" },
+  { informal: "guys", formal: "individuals" },
+  { informal: "asked", formal: "inquired" },
+  { informal: "said", formal: "stated" },
+  { informal: "told", formal: "advised" },
+  { informal: "pretty", formal: "" },
+  { informal: "kinda", formal: "somewhat" },
+  { informal: "sorta", formal: "somewhat" },
+  { informal: "really", formal: "" },
+  { informal: "very", formal: "" },
+  { informal: "actually", formal: "" },
+  { informal: "just", formal: "" },
+  { informal: "looked at", formal: "observed" },
+  { informal: "saw", formal: "observed" },
+  { informal: "went", formal: "proceeded" },
+  { informal: "got", formal: "obtained" },
+  { informal: "gave", formal: "provided" },
+]
 
 /**
- * UTILITY: Create word-level diff between original and edited text
+ * Enhanced passive voice detection using multiple pattern matching approaches
+ * This provides better accuracy than simple regex matching
  */
-export function createDiff(original: string, edited: string): TextDiff[] {
-  const wordDiffs = diffWords(original, edited)
-  const diffs: TextDiff[] = []
+function isPassiveVoice(sentence: string): boolean {
+  // Convert to lowercase for analysis
+  const text = sentence.toLowerCase()
 
-  wordDiffs.forEach((part) => {
-    if (part.added) {
-      diffs.push({ type: "added", value: part.value })
-    } else if (part.removed) {
-      diffs.push({ type: "removed", value: part.value })
-    } else {
-      diffs.push({ type: "unchanged", value: part.value })
-    }
-  })
+  // Common passive voice patterns in police reports
+  const passivePatterns = [
+    // "was/were + past participle" patterns
+    /\b(was|were)\s+\w*ed\b/,
+    /\b(was|were)\s+\w*en\b/,
+    /\b(was|were)\s+(arrested|transported|observed|found|taken|given|told|asked|advised|dispatched|called|sent|placed|removed|detained|released|charged|cited|warned|searched|questioned|interviewed|contacted|located|identified|processed|booked|fingerprinted|photographed)\b/,
 
-  return diffs
-}
+    // "is/are + being + past participle" patterns
+    /\b(is|are)\s+being\s+\w*ed\b/,
+    /\b(is|are)\s+being\s+\w*en\b/,
 
-/**
- * RULE: Word Replacement Detection
- * Detects single word to single word replacements
- * Example: "guy" → "subject", "said" → "stated"
- */
-export function detectWordReplacements(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
+    // "has/have been + past participle" patterns
+    /\b(has|have)\s+been\s+\w*ed\b/,
+    /\b(has|have)\s+been\s+\w*en\b/,
 
-  const diffs = createDiff(original, edited)
-
-  for (let i = 0; i < diffs.length - 1; i++) {
-    if (diffs[i].type === "removed" && diffs[i + 1].type === "added") {
-      const removedText = diffs[i].value.trim()
-      const addedText = diffs[i + 1].value.trim()
-
-      if (!removedText || !addedText) continue
-
-      const removedAlphanumeric = removedText.replace(/[^\w\s]/g, "").trim()
-      const addedAlphanumeric = addedText.replace(/[^\w\s]/g, "").trim()
-
-      if (removedAlphanumeric === addedAlphanumeric) continue
-
-      const cleanRemovedText = removedText
-        .replace(/[^\w\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase()
-      const cleanAddedText = addedText
-        .replace(/[^\w\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase()
-
-      if (cleanRemovedText === cleanAddedText) continue
-
-      const removedWords = cleanRemovedText.split(/\s+/).filter((w) => w.length > 0)
-      const addedWords = cleanAddedText.split(/\s+/).filter((w) => w.length > 0)
-
-      if (removedWords.length >= 1 && addedWords.length >= 1) {
-        let ruleType = "word_replacement"
-        let description = ""
-
-        if (removedWords.length === 1 && addedWords.length === 1) {
-          ruleType = "word_replacement"
-          description = `Replace word "${cleanRemovedText}" with "${cleanAddedText}"`
-        } else if (removedWords.length === 1 && addedWords.length > 1) {
-          ruleType = "phrase_replacement"
-          description = `Replace word "${cleanRemovedText}" with phrase "${cleanAddedText}"`
-        } else if (removedWords.length > 1 && addedWords.length === 1) {
-          ruleType = "phrase_replacement"
-          description = `Replace phrase "${cleanRemovedText}" with word "${cleanAddedText}"`
-        } else {
-          ruleType = "phrase_replacement"
-          description = `Replace phrase "${cleanRemovedText}" with phrase "${cleanAddedText}"`
-        }
-
-        rules.push({
-          type: ruleType as StyleRule["type"],
-          pattern: cleanRemovedText,
-          replacement: cleanAddedText,
-          frequency: 1,
-          confidence: 0.9,
-          description: description,
-        })
-      }
-    }
-  }
-
-  return rules
-}
-
-/**
- * RULE: Multi-Word Replacement Detection
- * Specifically tracks when word count changes (1→2, 2→1, etc.)
- * Example: "male subject" → "suspect" (2 words → 1 word)
- */
-export function detectMultiWordReplacements(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
-
-  const diffs = createDiff(original, edited)
-
-  for (let i = 0; i < diffs.length - 1; i++) {
-    if (diffs[i].type === "removed" && diffs[i + 1].type === "added") {
-      const removedText = diffs[i].value.trim()
-      const addedText = diffs[i + 1].value.trim()
-
-      if (!removedText || !addedText) continue
-
-      const cleanRemovedText = removedText
-        .replace(/[^\w\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase()
-      const cleanAddedText = addedText
-        .replace(/[^\w\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase()
-
-      if (cleanRemovedText === cleanAddedText) continue
-
-      const removedWords = cleanRemovedText.split(/\s+/).filter((w) => w.length > 0)
-      const addedWords = cleanAddedText.split(/\s+/).filter((w) => w.length > 0)
-
-      // Only track when word count changes significantly
-      if (
-        (removedWords.length > 1 && addedWords.length === 1) ||
-        (removedWords.length === 1 && addedWords.length > 1) ||
-        (removedWords.length > 1 && addedWords.length > 1 && removedWords.length !== addedWords.length)
-      ) {
-        let description = ""
-        if (removedWords.length > 1 && addedWords.length === 1) {
-          description = `Replace ${removedWords.length} words "${cleanRemovedText}" with 1 word "${cleanAddedText}"`
-        } else if (removedWords.length === 1 && addedWords.length > 1) {
-          description = `Replace 1 word "${cleanRemovedText}" with ${addedWords.length} words "${cleanAddedText}"`
-        } else {
-          description = `Replace ${removedWords.length} words "${cleanRemovedText}" with ${addedWords.length} words "${cleanAddedText}"`
-        }
-
-        rules.push({
-          type: "multi_word_replacement",
-          pattern: cleanRemovedText,
-          replacement: cleanAddedText,
-          frequency: 1,
-          confidence: 0.9,
-          description: description,
-        })
-      }
-    }
-  }
-
-  return rules
-}
-
-/**
- * RULE: Tone Adjustment Detection
- * Detects informal to formal language changes and removal of casual modifiers
- * Example: "talked to" → "interviewed", remove "really", "pretty", etc.
- */
-export function detectToneAdjustments(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
-
-  // Common informal to formal replacements in police reports
-  const informalToFormal = [
-    { informal: "cops", formal: "officers" },
-    { informal: "cop", formal: "officer" },
-    { informal: "talked to", formal: "interviewed" },
-    { informal: "spoke with", formal: "interviewed" },
-    { informal: "guy", formal: "subject" },
-    { informal: "guys", formal: "subjects" },
-    { informal: "stuff", formal: "items" },
-    { informal: "things", formal: "items" },
-    { informal: "looked at", formal: "observed" },
-    { informal: "checked", formal: "inspected" },
-    { informal: "found", formal: "discovered" },
-    { informal: "saw", formal: "observed" },
-    { informal: "went", formal: "proceeded" },
-    { informal: "got", formal: "obtained" },
-    { informal: "gave", formal: "provided" },
-    { informal: "told", formal: "advised" },
-    { informal: "said", formal: "stated" },
-    { informal: "asked", formal: "inquired" },
-    { informal: "came", formal: "arrived" },
-    { informal: "left", formal: "departed" },
-    { informal: "walked", formal: "proceeded on foot" },
-    { informal: "ran", formal: "fled on foot" },
-    { informal: "grabbed", formal: "secured" },
-    { informal: "took", formal: "obtained" },
-    { informal: "put", formal: "placed" },
-    { informal: "showed", formal: "displayed" },
-    { informal: "heard", formal: "detected" },
-    { informal: "smelled", formal: "detected an odor of" },
-    { informal: "felt", formal: "observed" },
+    // Common police report passive constructions
+    /\bwas\s+(arrested|transported|observed|found|taken|given|told|asked|advised|dispatched|called|sent|placed|removed|detained|released|charged|cited|warned|searched|questioned|interviewed|contacted|located|identified|processed|booked|fingerprinted|photographed)\b/,
+    /\bwere\s+(arrested|transported|observed|found|taken|given|told|asked|advised|dispatched|called|sent|placed|removed|detained|released|charged|cited|warned|searched|questioned|interviewed|contacted|located|identified|processed|booked|fingerprinted|photographed)\b/,
   ]
 
-  informalToFormal.forEach(({ informal, formal }) => {
-    const informalRegex = new RegExp(`\\b${informal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
-    const formalRegex = new RegExp(`\\b${formal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+  // Check if any passive pattern matches
+  return passivePatterns.some((pattern) => pattern.test(text))
+}
 
-    if (informalRegex.test(original) && formalRegex.test(edited)) {
+/**
+ * Split text into sentences using multiple delimiters
+ */
+function splitIntoSentences(text: string): string[] {
+  // Split on sentence endings, but preserve the delimiter
+  const sentences = text.split(/([.!?]+)/).filter((s) => s.trim().length > 0)
+
+  // Recombine sentences with their punctuation
+  const result: string[] = []
+  for (let i = 0; i < sentences.length; i += 2) {
+    const sentence = sentences[i]?.trim()
+    const punctuation = sentences[i + 1] || ""
+    if (sentence) {
+      result.push((sentence + punctuation).trim())
+    }
+  }
+
+  return result.filter((s) => s.length > 10) // Filter out very short fragments
+}
+
+/**
+ * ✅ Phase 1: Detect Voice Preference using enhanced pattern matching
+ */
+async function detectVoicePreference(originalTexts: string[], editedTexts: string[]): Promise<VoicePreference> {
+  let passiveToActiveCount = 0
+  let activeToPassiveCount = 0
+  let totalSentencesAnalyzed = 0
+
+  console.log("🔍 Phase 1: Analyzing voice preference across all reports...")
+
+  for (let i = 0; i < originalTexts.length; i++) {
+    const original = originalTexts[i]
+    const edited = editedTexts[i]
+
+    if (!edited || edited.trim() === original.trim()) continue
+
+    try {
+      // Split into sentences
+      const originalSentences = splitIntoSentences(original)
+      const editedSentences = splitIntoSentences(edited)
+
+      // Compare corresponding sentences for voice changes
+      const maxLength = Math.min(originalSentences.length, editedSentences.length)
+
+      for (let j = 0; j < maxLength; j++) {
+        const origSentence = originalSentences[j]
+        const editSentence = editedSentences[j]
+
+        // Skip if sentences are too similar (likely no voice change)
+        if (origSentence.toLowerCase().trim() === editSentence.toLowerCase().trim()) continue
+
+        totalSentencesAnalyzed++
+
+        const originalIsPassive = isPassiveVoice(origSentence)
+        const editedIsPassive = isPassiveVoice(editSentence)
+
+        if (originalIsPassive && !editedIsPassive) {
+          passiveToActiveCount++
+          console.log(
+            `  📝 Passive→Active: "${origSentence.substring(0, 50)}..." → "${editSentence.substring(0, 50)}..."`,
+          )
+        } else if (!originalIsPassive && editedIsPassive) {
+          activeToPassiveCount++
+          console.log(
+            `  📝 Active→Passive: "${origSentence.substring(0, 50)}..." → "${editSentence.substring(0, 50)}..."`,
+          )
+        }
+      }
+    } catch (error) {
+      console.warn("Error processing sentences:", error)
+    }
+  }
+
+  const preference = passiveToActiveCount > activeToPassiveCount ? "active" : "passive"
+  const totalChanges = passiveToActiveCount + activeToPassiveCount
+  const confidence = totalChanges > 0 ? Math.abs(passiveToActiveCount - activeToPassiveCount) / totalChanges : 0
+
+  console.log(`✅ Voice Preference Analysis Complete:`)
+  console.log(`   Passive→Active changes: ${passiveToActiveCount}`)
+  console.log(`   Active→Passive changes: ${activeToPassiveCount}`)
+  console.log(`   Total sentences analyzed: ${totalSentencesAnalyzed}`)
+  console.log(`   Supervisor prefers: ${preference.toUpperCase()} voice`)
+  console.log(`   Confidence: ${Math.round(confidence * 100)}%`)
+
+  return {
+    preference,
+    confidence,
+    passiveToActiveCount,
+    activeToPassiveCount,
+    totalSentencesAnalyzed,
+  }
+}
+
+async function detectPassiveToActive(original: string, edited: string): Promise<StyleRule[]> {
+  const rules: StyleRule[] = []
+
+  try {
+    let originalPassiveCount = 0
+    let editedPassiveCount = 0
+
+    const originalSentences = splitIntoSentences(original)
+    const editedSentences = splitIntoSentences(edited)
+
+    for (const sentence of originalSentences) {
+      if (isPassiveVoice(sentence)) originalPassiveCount++
+    }
+
+    for (const sentence of editedSentences) {
+      if (isPassiveVoice(sentence)) editedPassiveCount++
+    }
+
+    // If passive voice was reduced in editing, it's a pattern
+    if (originalPassiveCount > editedPassiveCount) {
+      rules.push({
+        type: "passive_to_active",
+        pattern: "passive voice constructions",
+        replacement: "active voice constructions",
+        frequency: originalPassiveCount - editedPassiveCount,
+        confidence: 0.9,
+        description: `Converts passive voice to active voice (${originalPassiveCount} → ${editedPassiveCount} passive constructions)`,
+      })
+    } else if (editedPassiveCount > originalPassiveCount) {
+      rules.push({
+        type: "active_to_passive",
+        pattern: "active voice constructions",
+        replacement: "passive voice constructions",
+        frequency: editedPassiveCount - originalPassiveCount,
+        confidence: 0.9,
+        description: `Converts active voice to passive voice (${originalPassiveCount} → ${editedPassiveCount} passive constructions)`,
+      })
+    }
+  } catch (error) {
+    console.warn("Error in detectPassiveToActive:", error)
+  }
+
+  return rules
+}
+
+/**
+ * ✅ NEW: Detect multi-word phrase replacements using WinkNLP
+ */
+async function detectMultiWordPhrases(original: string, edited: string): Promise<StyleRule[]> {
+  const rules: StyleRule[] = []
+
+  try {
+    console.log("🔍 Analyzing multi-word phrase changes with WinkNLP...")
+    const phraseChanges = await detectPhraseChanges(original, edited)
+
+    for (const change of phraseChanges) {
+      // Only include high-confidence multi-word phrase changes
+      if (change.confidence >= 0.5 && change.from.split(" ").length >= 2) {
+        rules.push({
+          type: "multi_word_phrase",
+          pattern: change.from,
+          replacement: change.to,
+          frequency: 1,
+          confidence: change.confidence,
+          description: `Replace multi-word phrase "${change.from}" with "${change.to}" (${Math.round(change.confidence * 100)}% confidence)`,
+        })
+      }
+    }
+
+    console.log(`  └─ Found ${rules.length} multi-word phrase patterns`)
+  } catch (error) {
+    console.warn("Error detecting multi-word phrases:", error)
+  }
+
+  return rules
+}
+
+function detectToneAdjustments(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+
+  INFORMAL_WORDS.forEach(({ informal, formal }) => {
+    const informalRegex = new RegExp(`\\b${informal}\\b`, "gi")
+    const formalRegex = formal ? new RegExp(`\\b${formal}\\b`, "gi") : null
+
+    const originalMatches = original.match(informalRegex)
+    const editedInformalMatches = edited.match(informalRegex)
+    const editedFormalMatches = formalRegex ? edited.match(formalRegex) : null
+
+    // Check if informal word was replaced with formal word or removed
+    const originalCount = originalMatches ? originalMatches.length : 0
+    const editedInformalCount = editedInformalMatches ? editedInformalMatches.length : 0
+    const editedFormalCount = editedFormalMatches ? editedFormalMatches.length : 0
+
+    if (originalCount > editedInformalCount) {
+      const replacementText = formal || "[removed]"
       rules.push({
         type: "tone_adjustment",
         pattern: informal,
-        replacement: formal,
-        frequency: 1,
-        confidence: 0.9,
-        description: `Replace informal "${informal}" with formal "${formal}"`,
+        replacement: replacementText,
+        frequency: originalCount - editedInformalCount,
+        confidence: 0.85,
+        description: `Replace informal "${informal}" with ${formal ? `formal "${formal}"` : "removal"}`,
       })
     }
   })
 
-  // Detect removal of informal modifiers and filler words
-  const informalModifiers = [
-    "pretty",
-    "really",
-    "kinda",
-    "sorta",
-    "super",
-    "totally",
-    "basically",
-    "like",
-    "you know",
-    "um",
-    "uh",
-    "well",
-    "so",
-    "actually",
-    "just",
-    "quite",
-    "very",
-    "extremely",
-    "incredibly",
-    "absolutely",
-    "definitely",
-  ]
+  return rules
+}
 
-  const diffs = createDiff(original, edited)
+function detectPhraseReplacements(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+  const diffs = diffWords(original, edited)
 
-  diffs.forEach((diff) => {
-    if (diff.type === "removed") {
-      const words = diff.value
-        .toLowerCase()
+  // Look for removed/added pairs that could be phrase replacements
+  for (let i = 0; i < diffs.length - 1; i++) {
+    if (diffs[i].removed && diffs[i + 1].added) {
+      const removedText = diffs[i].value.trim()
+      const addedText = diffs[i + 1].value.trim()
+
+      // Skip single character changes or whitespace-only changes
+      if (removedText.length <= 1 || addedText.length <= 1) continue
+      if (!removedText || !addedText) continue
+
+      // Clean the text for comparison
+      const cleanRemoved = removedText
         .replace(/[^\w\s]/g, " ")
-        .split(/\s+/)
-        .filter((w) => w.length > 0)
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+      const cleanAdded = addedText
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
 
-      words.forEach((word) => {
-        if (informalModifiers.includes(word)) {
-          rules.push({
-            type: "tone_adjustment",
-            pattern: word,
-            replacement: "",
-            frequency: 1,
-            confidence: 0.9,
-            description: `Remove informal modifier "${word}"`,
-          })
-        }
-      })
+      // Skip if they're the same after cleaning
+      if (cleanRemoved === cleanAdded) continue
+
+      const removedWords = cleanRemoved.split(/\s+/).filter((w) => w.length > 0)
+      const addedWords = cleanAdded.split(/\s+/).filter((w) => w.length > 0)
+
+      // Only consider multi-word phrases or significant single word changes
+      if (
+        removedWords.length >= 2 ||
+        addedWords.length >= 2 ||
+        (removedWords.length === 1 && addedWords.length === 1 && removedWords[0].length > 3 && addedWords[0].length > 3)
+      ) {
+        rules.push({
+          type: "phrase_replacement",
+          pattern: cleanRemoved,
+          replacement: cleanAdded,
+          frequency: 1,
+          confidence: 0.8,
+          description: `Replace phrase "${cleanRemoved}" with "${cleanAdded}"`,
+        })
+      }
     }
-  })
+  }
 
   return rules
 }
 
-/**
- * RULE: Redundant Words Detection
- * Detects when users consistently remove redundant/unnecessary words
- * Example: Remove "that", "which", redundant phrases like "in order to"
- */
-export function detectRedundantWords(original: string, edited: string): StyleRule[] {
+function detectTimeFormatting(original: string, edited: string): StyleRule[] {
   const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
 
-  // Common redundant words and phrases
-  const redundantWords = [
-    "that",
-    "which",
-    "who",
-    "whom", // Relative pronouns often removable
-    "really",
-    "very",
-    "quite",
-    "rather",
-    "pretty",
-    "fairly", // Intensity modifiers
-    "actually",
-    "basically",
-    "essentially",
-    "literally",
-    "obviously", // Filler words
-    "just",
-    "simply",
-    "merely",
-    "only", // Minimizing words often redundant
-  ]
+  // Check for 12-hour to 24-hour time format changes
+  const twelveHourPattern = /\b(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi
+  const twentyFourHourPattern = /\b(\d{4})\s*hours?\b/gi
 
-  const redundantPhrases = [
-    "in order to",
-    "due to the fact that",
-    "at this point in time",
-    "for the purpose of",
-    "with regard to",
-    "in the event that",
-    "it should be noted that",
-    "it is important to note",
-    "please be advised",
-    "at the present time",
-    "in the near future",
-    "on a regular basis",
-    "in a timely manner",
-    "for all intents and purposes",
-    "the fact that",
-    "in spite of the fact that",
-    "owing to the fact that",
-    "until such time as",
-  ]
+  const originalTwelveHour = original.match(twelveHourPattern)
+  const editedTwentyFourHour = edited.match(twentyFourHourPattern)
 
-  const diffs = createDiff(original, edited)
-
-  diffs.forEach((diff) => {
-    if (diff.type === "removed") {
-      const removedText = diff.value.toLowerCase().trim()
-
-      // Check for redundant single words
-      redundantWords.forEach((word) => {
-        const wordRegex = new RegExp(`\\b${word}\\b`, "gi")
-        if (wordRegex.test(removedText)) {
-          rules.push({
-            type: "redundant_words",
-            pattern: word,
-            replacement: "",
-            frequency: 1,
-            confidence: 0.8,
-            description: `Remove redundant word "${word}"`,
-          })
-        }
-      })
-
-      // Check for redundant phrases
-      redundantPhrases.forEach((phrase) => {
-        if (removedText.includes(phrase)) {
-          rules.push({
-            type: "redundant_words",
-            pattern: phrase,
-            replacement: "",
-            frequency: 1,
-            confidence: 0.9,
-            description: `Remove redundant phrase "${phrase}"`,
-          })
-        }
-      })
-    }
-  })
-
-  return rules
-}
-
-/**
- * RULE: Active/Passive Voice Detection
- * Detects preference for active vs passive voice in writing
- * Example: "was arrested" → "I arrested" (passive to active)
- */
-export function detectActivePassiveVoice(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
-
-  // Passive voice indicators
-  const passiveIndicators = [/\b(was|were|is|are|been|being)\s+\w+ed\b/gi, /\b(was|were|is|are|been|being)\s+\w+en\b/gi]
-
-  const originalPassiveCount = passiveIndicators.reduce((count, regex) => {
-    return count + (original.match(regex) || []).length
-  }, 0)
-
-  const editedPassiveCount = passiveIndicators.reduce((count, regex) => {
-    return count + (edited.match(regex) || []).length
-  }, 0)
-
-  // Active voice indicators (subject + action verb)
-  const activeIndicators = [
-    /\bI\s+(arrested|detained|questioned|searched|transported|interviewed|observed|discovered|found|located|seized|recovered|collected|documented|photographed|processed|booked|charged|cited|released)\b/gi,
-    /\b(officers?|police)\s+(arrested|detained|questioned|searched|transported|interviewed|observed|discovered|found|located|seized|recovered|collected|documented|photographed|processed|booked|charged|cited|released)\b/gi,
-  ]
-
-  const originalActiveCount = activeIndicators.reduce((count, regex) => {
-    return count + (original.match(regex) || []).length
-  }, 0)
-
-  const editedActiveCount = activeIndicators.reduce((count, regex) => {
-    return count + (edited.match(regex) || []).length
-  }, 0)
-
-  // Determine voice preference
-  if (originalPassiveCount > editedPassiveCount && editedActiveCount > originalActiveCount) {
-    const reduction = originalPassiveCount - editedPassiveCount
+  if (originalTwelveHour && editedTwentyFourHour) {
     rules.push({
-      type: "active_passive_voice",
-      pattern: "passive voice",
-      replacement: "active voice",
+      type: "time_format",
+      pattern: "12-hour AM/PM format",
+      replacement: "24-hour military format",
+      frequency: Math.min(originalTwelveHour.length, editedTwentyFourHour.length),
+      confidence: 0.95,
+      description: "Convert 12-hour time to 24-hour military format",
+    })
+  }
+
+  return rules
+}
+
+function detectConciseness(original: string, edited: string): StyleRule[] {
+  const rules: StyleRule[] = []
+
+  const originalWordCount = original.split(/\s+/).length
+  const editedWordCount = edited.split(/\s+/).length
+
+  if (editedWordCount < originalWordCount * 0.9) {
+    // Significant reduction in word count
+    const reduction = originalWordCount - editedWordCount
+    const percentage = Math.round(((originalWordCount - editedWordCount) / originalWordCount) * 100)
+
+    rules.push({
+      type: "conciseness",
+      pattern: "verbose phrasing",
+      replacement: "concise phrasing",
       frequency: reduction,
-      confidence: 0.8,
-      description: `Prefers active voice - reduced passive constructions by ${reduction}`,
-    })
-  } else if (originalActiveCount > editedActiveCount && editedPassiveCount > originalPassiveCount) {
-    const increase = editedPassiveCount - originalPassiveCount
-    rules.push({
-      type: "active_passive_voice",
-      pattern: "active voice",
-      replacement: "passive voice",
-      frequency: increase,
-      confidence: 0.8,
-      description: `Prefers passive voice - increased passive constructions by ${increase}`,
+      confidence: 0.7,
+      description: `Reduce word count by ${percentage}% (${originalWordCount} → ${editedWordCount} words)`,
     })
   }
 
   return rules
 }
 
-/**
- * RULE: Time Format Detection
- * Learns user's specific time formatting preferences from their edits
- * Example: "3:30 PM" → "15:30 hours" or "1530 hours" (learns exact style)
- */
-export function detectTimeFormatting(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
+export async function analyzeAllStylePatterns(original: string, edited: string): Promise<StyleRule[]> {
+  const allRules: StyleRule[] = []
 
-  // Time format patterns
-  const timePatterns = {
-    "12-hour AM/PM": /\b(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi,
-    "24-hour military colon": /\b(\d{1,2}):(\d{2})\s*hours?\b/gi,
-    "24-hour military no-colon": /\b(\d{4})\s*hours?\b/gi,
-    "approximate 12-hour": /\bat\s*approximately\s*(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi,
-    "approximate 24-hour colon": /\bat\s*approximately\s*(\d{1,2}):(\d{2})\s*hours?\b/gi,
-    "approximate 24-hour no-colon": /\bat\s*approximately\s*(\d{4})\s*hours?\b/gi,
+  try {
+    // Apply all detection functions (some async, some sync)
+    const passiveRules = await detectPassiveToActive(original, edited)
+    allRules.push(...passiveRules)
+
+    // ✅ NEW: Add multi-word phrase detection using WinkNLP
+    const multiWordRules = await detectMultiWordPhrases(original, edited)
+    allRules.push(...multiWordRules)
+
+    allRules.push(...detectToneAdjustments(original, edited))
+    allRules.push(...detectPhraseReplacements(original, edited))
+    allRules.push(...detectTimeFormatting(original, edited))
+    allRules.push(...detectConciseness(original, edited))
+  } catch (error) {
+    console.warn("Error in analyzeAllStylePatterns:", error)
   }
-
-  const originalFormats: { [key: string]: RegExpMatchArray[] } = {}
-  const editedFormats: { [key: string]: RegExpMatchArray[] } = {}
-
-  // Collect actual matches
-  Object.entries(timePatterns).forEach(([formatName, regex]) => {
-    originalFormats[formatName] = Array.from(original.matchAll(regex))
-    editedFormats[formatName] = Array.from(edited.matchAll(regex))
-  })
-
-  // Detect specific format changes
-  const original12Hour = originalFormats["12-hour AM/PM"]
-  const edited24HourColon = editedFormats["24-hour military colon"]
-  const edited24HourNoColon = editedFormats["24-hour military no-colon"]
-
-  if (original12Hour.length > 0 && edited24HourColon.length > 0) {
-    rules.push({
-      type: "time_format",
-      pattern: "12-hour AM/PM format",
-      replacement: "24-hour colon format",
-      frequency: original12Hour.length,
-      confidence: 0.95,
-      description: "Convert 12-hour time to 24-hour format with colon (e.g., 3:30 PM → 15:30 hours)",
-    })
-  }
-
-  if (original12Hour.length > 0 && edited24HourNoColon.length > 0) {
-    rules.push({
-      type: "time_format",
-      pattern: "12-hour AM/PM format",
-      replacement: "24-hour no-colon format",
-      frequency: original12Hour.length,
-      confidence: 0.95,
-      description: "Convert 12-hour time to 24-hour format without colon (e.g., 3:30 PM → 1530 hours)",
-    })
-  }
-
-  // Check for approximate time formatting changes
-  const originalApprox12 = originalFormats["approximate 12-hour"]
-  const editedApprox24Colon = editedFormats["approximate 24-hour colon"]
-  const editedApprox24NoColon = editedFormats["approximate 24-hour no-colon"]
-
-  if (originalApprox12.length > 0 && editedApprox24Colon.length > 0) {
-    rules.push({
-      type: "time_format",
-      pattern: "approximate 12-hour format",
-      replacement: "approximate 24-hour colon format",
-      frequency: originalApprox12.length,
-      confidence: 0.9,
-      description:
-        "Convert approximate times to 24-hour format with colon (e.g., approximately 3:30 PM → approximately 15:30 hours)",
-    })
-  }
-
-  if (originalApprox12.length > 0 && editedApprox24NoColon.length > 0) {
-    rules.push({
-      type: "time_format",
-      pattern: "approximate 12-hour format",
-      replacement: "approximate 24-hour no-colon format",
-      frequency: originalApprox12.length,
-      confidence: 0.9,
-      description:
-        "Convert approximate times to 24-hour format without colon (e.g., approximately 3:30 PM → approximately 1530 hours)",
-    })
-  }
-
-  return rules
-}
-
-/**
- * RULE: Sentence Length Preference Detection
- * Detects if user prefers shorter or longer sentences
- */
-export function detectSentenceLengthPreference(original: string, edited: string): StyleRule[] {
-  const rules: StyleRule[] = []
-  if (original.trim() === edited.trim()) return rules
-
-  const originalSentences = original.split(/[.!?]+/).filter((s) => s.trim().length > 0)
-  const editedSentences = edited.split(/[.!?]+/).filter((s) => s.trim().length > 0)
-
-  const originalAvgLength =
-    originalSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0) / originalSentences.length
-  const editedAvgLength = editedSentences.reduce((sum, s) => sum + s.split(/\s+/).length, 0) / editedSentences.length
-
-  if (editedAvgLength < originalAvgLength * 0.8) {
-    rules.push({
-      type: "sentence_length_preference",
-      pattern: "long sentences",
-      replacement: "short sentences",
-      frequency: 1,
-      confidence: 0.8,
-      description: `Prefers shorter sentences (avg ${originalAvgLength.toFixed(1)} → ${editedAvgLength.toFixed(1)} words)`,
-    })
-  } else if (editedAvgLength > originalAvgLength * 1.2) {
-    rules.push({
-      type: "sentence_length_preference",
-      pattern: "short sentences",
-      replacement: "long sentences",
-      frequency: 1,
-      confidence: 0.8,
-      description: `Prefers longer sentences (avg ${originalAvgLength.toFixed(1)} → ${editedAvgLength.toFixed(1)} words)`,
-    })
-  }
-
-  return rules
-}
-
-/**
- * MASTER FUNCTION: Analyze all style patterns
- * Runs all detection functions and returns consolidated results
- */
-export function analyzeAllStylePatterns(original: string, edited: string): StyleRule[] {
-  const allRules: StyleRule[] = [
-    ...detectWordReplacements(original, edited),
-    ...detectMultiWordReplacements(original, edited),
-    ...detectToneAdjustments(original, edited),
-    ...detectRedundantWords(original, edited),
-    ...detectActivePassiveVoice(original, edited),
-    ...detectTimeFormatting(original, edited),
-    ...detectSentenceLengthPreference(original, edited),
-  ]
 
   return allRules
+}
+
+/**
+ * ✅ Phase 1: Analyze voice preference across all edited reports
+ */
+export async function analyzeVoicePreference(
+  reports: Array<{ originalText: string; editedText: string; isEdited: boolean }>,
+): Promise<VoicePreference> {
+  const originalTexts = reports.filter((r) => r.isEdited).map((r) => r.originalText)
+  const editedTexts = reports.filter((r) => r.isEdited).map((r) => r.editedText)
+
+  return await detectVoicePreference(originalTexts, editedTexts)
+}
+
+/**
+ * ✅ Phase 2: Apply learned voice preference to new text
+ */
+export async function applyVoicePreference(text: string, voicePreference: VoicePreference): Promise<string> {
+  if (voicePreference.confidence < 0.3) {
+    console.log("⚠️ Low confidence in voice preference, skipping voice corrections")
+    return text
+  }
+
+  console.log(`🎨 Phase 2: Applying ${voicePreference.preference} voice preference to new text...`)
+
+  try {
+    let result = text
+    const sentences = splitIntoSentences(text)
+
+    for (const sentenceText of sentences) {
+      const isPassive = isPassiveVoice(sentenceText)
+
+      // Apply corrections based on learned preference
+      if (voicePreference.preference === "active" && isPassive) {
+        console.log(`  🔄 Converting passive to active: "${sentenceText.substring(0, 50)}..."`)
+
+        // Simple passive to active transformations
+        let corrected = sentenceText
+        corrected = corrected.replace(/\bwas arrested by (.+?)\b/gi, "$1 arrested")
+        corrected = corrected.replace(/\bwere arrested by (.+?)\b/gi, "$1 arrested")
+        corrected = corrected.replace(/\bwas transported by (.+?)\b/gi, "$1 transported")
+        corrected = corrected.replace(/\bwere transported by (.+?)\b/gi, "$1 transported")
+        corrected = corrected.replace(/\bwas observed by (.+?)\b/gi, "$1 observed")
+        corrected = corrected.replace(/\bwere observed by (.+?)\b/gi, "$1 observed")
+
+        // Simple cases without explicit agent
+        corrected = corrected.replace(/\bwas arrested\b/gi, "I arrested")
+        corrected = corrected.replace(/\bwere arrested\b/gi, "officers arrested")
+        corrected = corrected.replace(/\bwas transported\b/gi, "I transported")
+        corrected = corrected.replace(/\bwere transported\b/gi, "officers transported")
+        corrected = corrected.replace(/\bwas dispatched\b/gi, "dispatch sent me")
+        corrected = corrected.replace(/\bwas observed\b/gi, "I observed")
+
+        result = result.replace(sentenceText, corrected)
+      } else if (voicePreference.preference === "passive" && !isPassive) {
+        console.log(`  🔄 Converting active to passive: "${sentenceText.substring(0, 50)}..."`)
+
+        // Simple active to passive transformations
+        let corrected = sentenceText
+        corrected = corrected.replace(/\bI arrested (.+?)\b/gi, "$1 was arrested")
+        corrected = corrected.replace(/\bofficers arrested (.+?)\b/gi, "$1 were arrested")
+        corrected = corrected.replace(/\bI transported (.+?)\b/gi, "$1 was transported")
+        corrected = corrected.replace(/\bofficers transported (.+?)\b/gi, "$1 were transported")
+        corrected = corrected.replace(/\bI observed (.+?)\b/gi, "$1 was observed")
+        corrected = corrected.replace(/\bofficers observed (.+?)\b/gi, "$1 were observed")
+
+        result = result.replace(sentenceText, corrected)
+      }
+    }
+
+    return result
+  } catch (error) {
+    console.warn("Error applying voice preference:", error)
+    return text
+  }
+}
+
+export function applyStylePatterns(text: string, rules: StyleRule[], intensity = 1.0): string {
+  let editedText = text
+
+  rules.forEach((rule) => {
+    // Apply rule based on confidence and intensity
+    const shouldApply = (rule.confidence || 0) * intensity > 0.5
+
+    if (shouldApply) {
+      switch (rule.type) {
+        case "tone_adjustment":
+          if (rule.replacement !== "[removed]") {
+            const regex = new RegExp(`\\b${rule.pattern}\\b`, "gi")
+            editedText = editedText.replace(regex, rule.replacement)
+          } else {
+            // Remove the word entirely
+            const regex = new RegExp(`\\b${rule.pattern}\\b\\s*`, "gi")
+            editedText = editedText.replace(regex, "")
+          }
+          break
+
+        case "phrase_replacement":
+        case "word_replacement":
+        case "multi_word_phrase": // ✅ NEW: Handle multi-word phrase replacements
+          const regex = new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+          editedText = editedText.replace(regex, rule.replacement)
+          break
+
+        case "passive_to_active":
+          // Apply specific passive to active transformations
+          editedText = editedText.replace(/\bwas arrested\b/gi, "I arrested")
+          editedText = editedText.replace(/\bwere arrested\b/gi, "officers arrested")
+          editedText = editedText.replace(/\bwas transported\b/gi, "I transported")
+          editedText = editedText.replace(/\bwere transported\b/gi, "officers transported")
+          editedText = editedText.replace(/\bwas observed\b/gi, "I observed")
+          editedText = editedText.replace(/\bwere observed\b/gi, "officers observed")
+          break
+
+        case "active_to_passive":
+          // Apply active to passive transformations
+          editedText = editedText.replace(/\bI arrested (.+?)\b/gi, "$1 was arrested")
+          editedText = editedText.replace(/\bofficers arrested (.+?)\b/gi, "$1 were arrested")
+          editedText = editedText.replace(/\bI transported (.+?)\b/gi, "$1 was transported")
+          editedText = editedText.replace(/\bofficers transported (.+?)\b/gi, "$1 were transported")
+          break
+
+        case "time_format":
+          // Convert 12-hour to 24-hour format
+          editedText = editedText.replace(/\b(\d{1,2}):(\d{2})\s*(AM|PM)\b/gi, (match, hour, minute, period) => {
+            let hour24 = Number.parseInt(hour)
+            if (period.toUpperCase() === "PM" && hour24 !== 12) {
+              hour24 += 12
+            } else if (period.toUpperCase() === "AM" && hour24 === 12) {
+              hour24 = 0
+            }
+            return `${hour24.toString().padStart(2, "0")}${minute} hours`
+          })
+          break
+      }
+    }
+  })
+
+  return editedText
 }
