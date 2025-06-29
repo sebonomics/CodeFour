@@ -62,8 +62,8 @@ export default function HomePage() {
           {/* Second Image */}
           <div className="w-full">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Vincent%20m_Poster%20Gradient_14.png-3XZ59jvTtn1HtGYi0D4gaHHr1St22v.jpeg"
-              alt="Code Four Style Analysis"
+              src="/images/reinforced-training.jpg"
+              alt="Reinforced Training - Choose reports to train from"
               width={1400}
               height={800}
               className="w-full h-auto rounded-2xl"
