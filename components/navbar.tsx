@@ -3,8 +3,6 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import Image from "next/image"
-
-import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import InstallModal from "@/components/install-modal"
 
@@ -121,36 +119,38 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Right-aligned Auth Buttons */}
+              {/* Right-aligned Auth Buttons - Non-functional, just for show */}
               <div className="flex items-center gap-3">
-                <a href="https://outsideconnection.vercel.app/auth/login">
-                  <Button
-                    className="bg-transparent hover:bg-white/10 border border-white/30 rounded-lg px-4"
-                    style={{
-                      fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "#FFFFFF",
-                      height: "40px",
-                    }}
-                  >
-                    Login
-                  </Button>
-                </a>
-                <a href="https://outsideconnection.vercel.app/auth/signup">
-                  <Button
-                    className="bg-white text-black hover:bg-gray-200 px-4 rounded-lg"
-                    style={{
-                      fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "#000000",
-                      height: "40px",
-                    }}
-                  >
-                    Sign Up
-                  </Button>
-                </a>
+                <div
+                  className="bg-transparent hover:bg-white/10 border border-white/30 rounded-lg px-4 cursor-default"
+                  style={{
+                    fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#FFFFFF",
+                    height: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  Login
+                </div>
+                <div
+                  className="bg-white text-black hover:bg-gray-200 px-4 rounded-lg cursor-default"
+                  style={{
+                    fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#000000",
+                    height: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  Sign Up
+                </div>
               </div>
             </div>
 
@@ -198,44 +198,36 @@ export default function Navbar() {
               {/* Divider */}
               <div className="border-t border-white/10 my-2"></div>
 
-              {/* Auth Buttons */}
-              <a
-                href="https://outsideconnection.vercel.app/auth/login"
-                className="w-full"
+              {/* Auth Buttons - Non-functional, just for show */}
+              <div
+                className="bg-transparent hover:bg-white/10 border border-white/30 rounded-lg w-full justify-start px-3 py-3 cursor-default"
+                style={{
+                  fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#FFFFFF",
+                  display: "flex",
+                  alignItems: "center",
+                }}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Button
-                  className="bg-transparent hover:bg-white/10 border border-white/30 rounded-lg w-full justify-start"
-                  style={{
-                    fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#FFFFFF",
-                    height: "48px",
-                  }}
-                >
-                  Login
-                </Button>
-              </a>
-              <a
-                href="https://outsideconnection.vercel.app/auth/signup"
-                className="w-full"
+                Login
+              </div>
+              <div
+                className="bg-white text-black hover:bg-gray-200 rounded-lg w-full justify-start px-3 py-3 cursor-default"
+                style={{
+                  fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#000000",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                }}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Button
-                  className="bg-white text-black hover:bg-gray-200 rounded-lg w-full justify-start"
-                  style={{
-                    fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "#000000",
-                    height: "48px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  Sign Up
-                </Button>
-              </a>
+                Sign Up
+              </div>
             </div>
           </div>
         </div>
