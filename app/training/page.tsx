@@ -379,6 +379,7 @@ export default function TrainingPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [intensityLevel, setIntensityLevel] = useState<number[]>([50])
   const [appliedPatterns, setAppliedPatterns] = useState<AppliedPattern[]>([])
+  const [isApplying, setIsApplying] = useState(false)
 
   const editedReportsCount = reports.filter((r) => r.isEdited).length
 
@@ -569,142 +570,146 @@ export default function TrainingPage() {
   }
 
   const applySupervisorStyle = async () => {
+    setIsApplying(true)
     console.log("🎨 Applying learned style to test report...")
 
-    if (styleRules.length === 0 && !voicePreference) {
-      setSuggestedEdits(testReport.originalText)
-      setShowSuggestions(true)
-      setAppliedPatterns([])
-      return
-    }
-
-    const intensity = intensityLevel[0] / 100
-    let editedText = testReport.originalText
-    const originalText = testReport.originalText
-
-    // Track what patterns were actually found and applied
-    const patternsUsed: AppliedPattern[] = []
-
-    // Determine which types of changes to apply based on intensity level
-    const shouldApplyWordChanges = intensity >= 0.2  // 20% - word-for-word changes
-    const shouldApplyPhraseChanges = intensity >= 0.4  // 40% - phrase replacements
-    const shouldApplyVoiceChanges = intensity >= 0.7  // 70% - active/passive voice
-    const shouldApplyToneChanges = intensity >= 0.5  // 50% - tone adjustments
-    const shouldApplyTimeChanges = intensity >= 0.3  // 30% - time formatting
-
-    console.log(`🎛️ Intensity Level: ${intensityLevel[0]}%`)
-    console.log(`  Word changes: ${shouldApplyWordChanges ? '✓' : '✗'}`)
-    console.log(`  Phrase changes: ${shouldApplyPhraseChanges ? '✓' : '✗'}`)
-    console.log(`  Voice changes: ${shouldApplyVoiceChanges ? '✓' : '✗'}`)
-    console.log(`  Tone changes: ${shouldApplyToneChanges ? '✓' : '✗'}`)
-    console.log(`  Time changes: ${shouldApplyTimeChanges ? '✓' : '✗'}`)
-
-    // ✅ Phase 2: Apply voice preference first if available and intensity allows
-    if (voicePreference && voicePreference.confidence > 0.3 && shouldApplyVoiceChanges) {
-      try {
-        const beforeVoice = editedText
-        editedText = await applyVoicePreference(editedText, voicePreference)
-
-        // Check if voice preference actually made changes
-        const voiceChangesDetected = beforeVoice !== editedText
-
-        if (voiceChangesDetected) {
-          patternsUsed.push({
-            rule: {
-              type: voicePreference.preference === "active" ? "passive_to_active" : "active_to_passive",
-              pattern: `${voicePreference.preference === "active" ? "passive" : "active"} voice constructions`,
-              replacement: `${voicePreference.preference} voice constructions`,
-              frequency: voicePreference.passiveToActiveCount + voicePreference.activeToPassiveCount,
-              confidence: voicePreference.confidence,
-              description: `Apply ${voicePreference.preference} voice preference (${Math.round(voicePreference.confidence * 100)}% confidence)`,
-            },
-            applied: true,
-            foundInText: true,
-            reason: "Voice patterns detected and converted in test report",
-          })
-        }
-
-        console.log("✅ Voice preference applied")
-      } catch (error) {
-        console.warn("Error applying voice preference:", error)
+    try {
+      if (styleRules.length === 0 && !voicePreference) {
+        setSuggestedEdits(testReport.originalText)
+        setShowSuggestions(true)
+        setAppliedPatterns([])
+        return
       }
-    }
 
-    // Then apply other style patterns and track which ones actually found matches
-    if (styleRules.length > 0) {
-      styleRules.forEach((rule) => {
-        const beforeApplication = editedText
+      const intensity = intensityLevel[0] / 100
+      let editedText = testReport.originalText
 
-        // Check if this rule type should be applied based on intensity
-        let shouldApplyThisRule = false
-        switch (rule.type) {
-          case "word_replacement":
-            shouldApplyThisRule = shouldApplyWordChanges
-            break
-          case "phrase_replacement":
-          case "multi_word_phrase":
-            shouldApplyThisRule = shouldApplyPhraseChanges
-            break
-          case "passive_to_active":
-          case "active_to_passive":
-            shouldApplyThisRule = shouldApplyVoiceChanges
-            break
-          case "tone_adjustment":
-            shouldApplyThisRule = shouldApplyToneChanges
-            break
-          case "time_format":
-            shouldApplyThisRule = shouldApplyTimeChanges
-            break
-          default:
-            shouldApplyThisRule = shouldApplyWordChanges // Default to word changes
-        }
+      // Track what patterns were actually found and applied
+      const patternsUsed: AppliedPattern[] = []
 
-        if (!shouldApplyThisRule) {
-          console.log(`⏭️ Skipping ${rule.type} due to intensity level`)
-          return
-        }
+      // Determine which types of changes to apply based on intensity level
+      const shouldApplyWordChanges = intensity >= 0.2 // 20% - word-for-word changes
+      const shouldApplyPhraseChanges = intensity >= 0.4 // 40% - phrase replacements
+      const shouldApplyVoiceChanges = intensity >= 0.7 // 70% - active/passive voice
+      const shouldApplyToneChanges = intensity >= 0.5 // 50% - tone adjustments
+      const shouldApplyTimeChanges = intensity >= 0.3 // 30% - time formatting
 
-        // Check if the pattern exists in the current text
-        let patternFound = false
-        const replacements: Array<{ original: string; replacement: string; position: number }> = []
+      console.log(`🎛️ Intensity Level: ${intensityLevel[0]}%`)
+      console.log(`  Word changes: ${shouldApplyWordChanges ? "✓" : "✗"}`)
+      console.log(`  Phrase changes: ${shouldApplyPhraseChanges ? "✓" : "✗"}`)
+      console.log(`  Voice changes: ${shouldApplyVoiceChanges ? "✓" : "✗"}`)
+      console.log(`  Tone changes: ${shouldApplyToneChanges ? "✓" : "✗"}`)
+      console.log(`  Time changes: ${shouldApplyTimeChanges ? "✓" : "✗"}`)
 
-        // Create regex for pattern matching
-        const regex = new RegExp(`\\b${rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
-        const matches = Array.from(editedText.matchAll(regex))
+      // ✅ Phase 2: Apply voice preference first if available and intensity allows
+      if (voicePreference && voicePreference.confidence > 0.3 && shouldApplyVoiceChanges) {
+        try {
+          const beforeVoice = editedText
+          editedText = await applyVoicePreference(editedText, voicePreference)
 
-        if (matches.length > 0) {
-          patternFound = true
-          matches.forEach((match) => {
-            replacements.push({
-              original: match[0],
-              replacement: rule.replacement,
-              position: match.index || 0,
+          // Check if voice preference actually made changes
+          const voiceChangesDetected = beforeVoice !== editedText
+
+          if (voiceChangesDetected) {
+            patternsUsed.push({
+              rule: {
+                type: voicePreference.preference === "active" ? "passive_to_active" : "active_to_passive",
+                pattern: `${voicePreference.preference === "active" ? "passive" : "active"} voice constructions`,
+                replacement: `${voicePreference.preference} voice constructions`,
+                frequency: voicePreference.passiveToActiveCount + voicePreference.activeToPassiveCount,
+                confidence: voicePreference.confidence,
+                description: `Apply ${voicePreference.preference} voice preference (${Math.round(voicePreference.confidence * 100)}% confidence)`,
+              },
+              applied: true,
+              foundInText: true,
+              reason: "Voice patterns detected and converted in test report",
             })
-          })
-        }
+          }
 
-        // Apply the pattern if confidence meets intensity threshold AND pattern was found
-        if (patternFound && (rule.confidence || 0) >= intensity) {
-          // Apply the actual replacement
-          editedText = editedText.replace(regex, rule.replacement)
-
-          // Only add to applied patterns if it was actually found and applied
-          patternsUsed.push({
-            rule,
-            applied: true,
-            foundInText: true,
-            replacements,
-            reason: `Found ${replacements.length} instance(s) of "${rule.pattern}" in test report`,
-          })
+          console.log("✅ Voice preference applied")
+        } catch (error) {
+          console.warn("Error applying voice preference:", error)
         }
-      })
+      }
+
+      // Then apply other style patterns and track which ones actually found matches
+      if (styleRules.length > 0) {
+        styleRules.forEach((rule) => {
+          // Check if this rule type should be applied based on intensity
+          let shouldApplyThisRule = false
+          switch (rule.type) {
+            case "word_replacement":
+              shouldApplyThisRule = shouldApplyWordChanges
+              break
+            case "phrase_replacement":
+            case "multi_word_phrase":
+              shouldApplyThisRule = shouldApplyPhraseChanges
+              break
+            case "passive_to_active":
+            case "active_to_passive":
+              shouldApplyThisRule = shouldApplyVoiceChanges
+              break
+            case "tone_adjustment":
+              shouldApplyThisRule = shouldApplyToneChanges
+              break
+            case "time_format":
+              shouldApplyThisRule = shouldApplyTimeChanges
+              break
+            default:
+              shouldApplyThisRule = shouldApplyWordChanges // Default to word changes
+          }
+
+          if (!shouldApplyThisRule) {
+            console.log(`⏭️ Skipping ${rule.type} due to intensity level`)
+            return
+          }
+
+          // Check if the pattern exists in the current text
+          let patternFound = false
+          const replacements: Array<{ original: string; replacement: string; position: number }> = []
+
+          // Create regex for pattern matching
+          const regex = new RegExp(`\\b${rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")
+          const matches = Array.from(editedText.matchAll(regex))
+
+          if (matches.length > 0) {
+            patternFound = true
+            matches.forEach((match) => {
+              replacements.push({
+                original: match[0],
+                replacement: rule.replacement,
+                position: match.index || 0,
+              })
+            })
+          }
+
+          // Apply the pattern if confidence meets intensity threshold AND pattern was found
+          if (patternFound && (rule.confidence || 0) >= intensity) {
+            // Apply the actual replacement
+            editedText = editedText.replace(regex, rule.replacement)
+
+            // Only add to applied patterns if it was actually found and applied
+            patternsUsed.push({
+              rule,
+              applied: true,
+              foundInText: true,
+              replacements,
+              reason: `Found ${replacements.length} instance(s) of "${rule.pattern}" in test report`,
+            })
+          }
+        })
+      }
+
+      setSuggestedEdits(editedText)
+      setShowSuggestions(true)
+      setAppliedPatterns(patternsUsed)
+      console.log("🎉 Style application complete!")
+      console.log(`Applied ${patternsUsed.length} patterns that were found in the test report`)
+    } catch (error) {
+      console.error("Error applying supervisor style:", error)
+    } finally {
+      setIsApplying(false)
     }
-
-    setSuggestedEdits(editedText)
-    setShowSuggestions(true)
-    setAppliedPatterns(patternsUsed)
-    console.log("🎉 Style application complete!")
-    console.log(`Applied ${patternsUsed.length} patterns that were found in the test report`)
   }
 
   // Group patterns by type for better display, including voice preference
@@ -1064,11 +1069,16 @@ export default function TrainingPage() {
                               <span>Aggressive</span>
                             </div>
                             <p className="text-white/60 text-xs">
-                              <strong>Intensity Levels:</strong><br/>
-                              20%+: Word-for-word changes<br/>
-                              30%+: Time formatting<br/>
-                              40%+: Phrase replacements<br/>
-                              50%+: Tone adjustments<br/>
+                              <strong>Intensity Levels:</strong>
+                              <br />
+                              20%+: Word-for-word changes
+                              <br />
+                              30%+: Time formatting
+                              <br />
+                              40%+: Phrase replacements
+                              <br />
+                              50%+: Tone adjustments
+                              <br />
                               70%+: Active/passive voice changes
                             </p>
                           </div>
@@ -1105,10 +1115,20 @@ export default function TrainingPage() {
                       {/* Apply Learned Style Button - Spans both columns */}
                       <Button
                         onClick={applySupervisorStyle}
-                        className="w-full bg-white text-black hover:bg-gray-200"
+                        disabled={isApplying}
+                        className="w-full bg-white text-black hover:bg-gray-200 disabled:opacity-50"
                       >
-                        <Zap className="w-4 h-4 mr-2" />
-                        Apply Learned Style
+                        {isApplying ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
+                            Applying Style...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Apply Learned Style
+                          </>
+                        )}
                       </Button>
 
                       {/* Applied Patterns Section - Only show patterns that were actually found in the test report */}
