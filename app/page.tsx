@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Play, Zap, Shield, Clock, FileText, Brain, Target } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { TestimonialsSection } from "@/components/testimonials-section"
-import { FAQSection } from "@/components/faq-section"
-import { Footer } from "@/components/footer"
+import TestimonialsSection from "@/components/testimonials-section"
+import FAQSection from "@/components/faq-section"
+import Footer from "@/components/footer"
 
 export default function HomePage() {
   return (
