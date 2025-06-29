@@ -377,7 +377,7 @@ export default function TrainingPage() {
   const [voicePreference, setVoicePreference] = useState<VoicePreference | null>(null)
   const [suggestedEdits, setSuggestedEdits] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [intensityLevel, setIntensityLevel] = useState([50])
+  const [intensityLevel, setIntensityLevel] = useState<number[]>([50])
   const [appliedPatterns, setAppliedPatterns] = useState<AppliedPattern[]>([])
 
   const editedReportsCount = reports.filter((r) => r.isEdited).length
@@ -585,8 +585,22 @@ export default function TrainingPage() {
     // Track what patterns were actually found and applied
     const patternsUsed: AppliedPattern[] = []
 
-    // ✅ Phase 2: Apply voice preference first if available
-    if (voicePreference && voicePreference.confidence > 0.3) {
+    // Determine which types of changes to apply based on intensity level
+    const shouldApplyWordChanges = intensity >= 0.2  // 20% - word-for-word changes
+    const shouldApplyPhraseChanges = intensity >= 0.4  // 40% - phrase replacements
+    const shouldApplyVoiceChanges = intensity >= 0.7  // 70% - active/passive voice
+    const shouldApplyToneChanges = intensity >= 0.5  // 50% - tone adjustments
+    const shouldApplyTimeChanges = intensity >= 0.3  // 30% - time formatting
+
+    console.log(`🎛️ Intensity Level: ${intensityLevel[0]}%`)
+    console.log(`  Word changes: ${shouldApplyWordChanges ? '✓' : '✗'}`)
+    console.log(`  Phrase changes: ${shouldApplyPhraseChanges ? '✓' : '✗'}`)
+    console.log(`  Voice changes: ${shouldApplyVoiceChanges ? '✓' : '✗'}`)
+    console.log(`  Tone changes: ${shouldApplyToneChanges ? '✓' : '✗'}`)
+    console.log(`  Time changes: ${shouldApplyTimeChanges ? '✓' : '✗'}`)
+
+    // ✅ Phase 2: Apply voice preference first if available and intensity allows
+    if (voicePreference && voicePreference.confidence > 0.3 && shouldApplyVoiceChanges) {
       try {
         const beforeVoice = editedText
         editedText = await applyVoicePreference(editedText, voicePreference)
@@ -620,6 +634,35 @@ export default function TrainingPage() {
     if (styleRules.length > 0) {
       styleRules.forEach((rule) => {
         const beforeApplication = editedText
+
+        // Check if this rule type should be applied based on intensity
+        let shouldApplyThisRule = false
+        switch (rule.type) {
+          case "word_replacement":
+            shouldApplyThisRule = shouldApplyWordChanges
+            break
+          case "phrase_replacement":
+          case "multi_word_phrase":
+            shouldApplyThisRule = shouldApplyPhraseChanges
+            break
+          case "passive_to_active":
+          case "active_to_passive":
+            shouldApplyThisRule = shouldApplyVoiceChanges
+            break
+          case "tone_adjustment":
+            shouldApplyThisRule = shouldApplyToneChanges
+            break
+          case "time_format":
+            shouldApplyThisRule = shouldApplyTimeChanges
+            break
+          default:
+            shouldApplyThisRule = shouldApplyWordChanges // Default to word changes
+        }
+
+        if (!shouldApplyThisRule) {
+          console.log(`⏭️ Skipping ${rule.type} due to intensity level`)
+          return
+        }
 
         // Check if the pattern exists in the current text
         let patternFound = false
@@ -1021,7 +1064,12 @@ export default function TrainingPage() {
                               <span>Aggressive</span>
                             </div>
                             <p className="text-white/60 text-xs">
-                              Higher intensity applies learned rules more aggressively based on confidence scores
+                              <strong>Intensity Levels:</strong><br/>
+                              20%+: Word-for-word changes<br/>
+                              30%+: Time formatting<br/>
+                              40%+: Phrase replacements<br/>
+                              50%+: Tone adjustments<br/>
+                              70%+: Active/passive voice changes
                             </p>
                           </div>
                         </CardContent>
@@ -1034,13 +1082,6 @@ export default function TrainingPage() {
                             <h5 className="font-medium mb-2">{testReport.title}</h5>
                             {testReport.originalText}
                           </div>
-                          <Button
-                            onClick={applySupervisorStyle}
-                            className="w-full mt-4 bg-white text-black hover:bg-gray-200"
-                          >
-                            <Zap className="w-4 h-4 mr-2" />
-                            Apply Learned Style
-                          </Button>
                         </div>
 
                         <div>
@@ -1060,6 +1101,15 @@ export default function TrainingPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Apply Learned Style Button - Spans both columns */}
+                      <Button
+                        onClick={applySupervisorStyle}
+                        className="w-full bg-white text-black hover:bg-gray-200"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        Apply Learned Style
+                      </Button>
 
                       {/* Applied Patterns Section - Only show patterns that were actually found in the test report */}
                       {showSuggestions && appliedPatterns.filter((p) => p.applied && p.foundInText).length > 0 && (

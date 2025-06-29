@@ -12,54 +12,11 @@ import Footer from "@/components/footer"
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-black text-white font-geist">
-      {/* Navigation */}
       <Navbar />
-
-      {/* Hero Section */}
-      <section className="relative py-32 px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-pink-900/20" />
-        <div className="absolute inset-0">
-          <Image
-            src="/images/code-four-hero.jpeg"
-            alt="Hero Background"
-            fill
-            className="object-cover opacity-30"
-            priority
-          />
-        </div>
-        <div className="relative max-w-7xl mx-auto text-center pt-16">
-          <Badge variant="outline" className="mb-6 border-white/20 text-white/80 bg-white/5">
-            AI-Powered Version Control
-          </Badge>
-          <h1 className="text-6xl md:text-8xl font-bold mb-6 bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
-            Code Four
-          </h1>
-          <p className="text-xl md:text-2xl text-white/80 mb-8 max-w-3xl mx-auto">
-            AI Version Control for Writing Style - Train AI to learn and apply superior officer writing styles to
-            incident reports
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/training">
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-4 rounded-full">
-                Try Training Interface
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-4 bg-transparent rounded-full"
-            >
-              <Play className="mr-2 w-5 h-5" />
-              Watch Demo
-            </Button>
-          </div>
-        </div>
-      </section>
 
       {/* Main Content - Just the two images */}
       <main className="pt-24 px-6">
-        <div className="max-w-7xl mx-auto space-y-12">
+        <div className="max-w-7xl mx-auto space-y-24">
           {/* First Image */}
           <div className="w-full">
             <Image
@@ -70,6 +27,112 @@ export default function HomePage() {
               className="w-full h-auto rounded-2xl"
               priority
             />
+          </div>
+
+          {/* Three-column feature section with images and captions */}
+          <section className="w-full flex justify-center">
+            <div className="w-full max-w-6xl bg-white rounded-3xl shadow-xl px-6 py-12 flex flex-col items-center">
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Smart Phrases */}
+                <div className="flex flex-col items-center">
+                  <img
+                    src="/images/feature-smart-phrases.jpg"
+                    alt="Smart Phrases"
+                    className="rounded-xl shadow-md w-full max-w-xs object-cover mb-4"
+                  />
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900">Smart Phrases</h3>
+                    <p className="text-gray-700 text-sm">Not just your words, but how you use them — we track your phrases through every single detail.</p>
+                  </div>
+                </div>
+                {/* Find Patterns */}
+                <div className="flex flex-col items-center">
+                  <img
+                    src="/images/feature-find-patterns.jpg"
+                    alt="Find Patterns"
+                    className="rounded-xl shadow-md w-full max-w-xs object-cover mb-4"
+                  />
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900">Find Patterns</h3>
+                    <p className="text-gray-700 text-sm">Find consistencies across your reports, and our models will learn from them — word for word.</p>
+                  </div>
+                </div>
+                {/* See Your Style */}
+                <div className="flex flex-col items-center">
+                  <img
+                    src="/images/feature-see-your-style.jpg"
+                    alt="See Your Style"
+                    className="rounded-xl shadow-md w-full max-w-xs object-cover mb-4"
+                  />
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900">See Your Style</h3>
+                    <p className="text-gray-700 text-sm">See how your writing style and teach your Code Four assistant how to write like you within seconds.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Text Section Between Images */}
+          <div className="text-center py-16">
+            <div className="max-w-4xl mx-auto">
+              <h2 
+                className="text-5xl md:text-6xl font-bold mb-8 bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent"
+                style={{
+                  fontFamily: 'var(--font-geist-sans), "GeistSans Fallback", sans-serif',
+                  fontWeight: "600",
+                  letterSpacing: "-0.04em",
+                  lineHeight: "1.1",
+                }}
+              >
+                AI Supervisor Training Interface
+              </h2>
+              <p 
+                className="text-xl md:text-2xl text-white/80 leading-relaxed mb-8"
+                style={{
+                  fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                  fontWeight: "500",
+                }}
+              >
+                Train AI to learn and apply superior officer writing styles to incident reports. 
+                Advanced pattern recognition for law enforcement documentation.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                <div className="flex items-center gap-3 text-white/70">
+                  <span 
+                    className="text-lg"
+                    style={{
+                      fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                      fontWeight: "500",
+                    }}
+                  >
+                    Style Learning
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-white/70">
+                  <span 
+                    className="text-lg"
+                    style={{
+                      fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                      fontWeight: "500",
+                    }}
+                  >
+                    Pattern Recognition
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-white/70">
+                  <span 
+                    className="text-lg"
+                    style={{
+                      fontFamily: 'var(--font-geist-sans), "GeistSans", sans-serif',
+                      fontWeight: "500",
+                    }}
+                  >
+                    Law Enforcement
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Second Image */}
@@ -84,225 +147,6 @@ export default function HomePage() {
           </div>
         </div>
       </main>
-
-      {/* See Your Style Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">See Your Style in Action</h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto">
-              Watch as AI learns your editing patterns and applies them consistently across all documents
-            </p>
-          </div>
-          <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-            <Image
-              src="/images/see-your-style.jpeg"
-              alt="See Your Style Interface"
-              width={1200}
-              height={800}
-              className="w-full h-auto"
-              priority
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-24 px-6 bg-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">Powerful Features</h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto">
-              Everything you need to maintain consistent writing style across your team
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <Brain className="w-12 h-12 text-blue-400 mb-4" />
-                <CardTitle className="text-white">AI Style Learning</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Advanced AI analyzes your edits to learn your unique writing style and preferences automatically.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <Target className="w-12 h-12 text-green-400 mb-4" />
-                <CardTitle className="text-white">Pattern Detection</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Identifies consistent patterns in your edits, from phrase replacements to voice preferences.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <Zap className="w-12 h-12 text-yellow-400 mb-4" />
-                <CardTitle className="text-white">Instant Application</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Apply learned style rules to new documents instantly with confidence scoring and visual diffs.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <FileText className="w-12 h-12 text-purple-400 mb-4" />
-                <CardTitle className="text-white">Multi-Word Phrases</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Advanced NLP detects complex phrase replacements like "male suspect" → "subject" across documents.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <Shield className="w-12 h-12 text-red-400 mb-4" />
-                <CardTitle className="text-white">Voice Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Automatically detects active vs passive voice preferences and applies them consistently.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-              <CardHeader>
-                <Clock className="w-12 h-12 text-orange-400 mb-4" />
-                <CardTitle className="text-white">Real-time Training</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-white/80">
-                  Train the AI with just a few sample edits and see immediate results with confidence metrics.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">How It Works</h2>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto">
-              Three simple steps to train your AI writing assistant
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center group">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-2xl font-bold text-white">1</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-4 text-white">Edit Sample Reports</h3>
-              <p className="text-white/80">
-                Edit 2-5 sample reports to match your preferred writing style. The AI learns from your changes.
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-2xl font-bold text-white">2</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-4 text-white">Train the AI</h3>
-              <p className="text-white/80">
-                Click "Train AI" to analyze your edits and extract style patterns with confidence scores.
-              </p>
-            </div>
-
-            <div className="text-center group">
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-2xl font-bold text-white">3</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-4 text-white">Apply & Test</h3>
-              <p className="text-white/80">
-                Test the learned style on new documents and see real-time suggestions with visual diffs.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-24 px-6 bg-gradient-to-r from-blue-900/10 to-purple-900/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
-            <div className="group">
-              <div className="text-5xl md:text-6xl font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                95%
-              </div>
-              <div className="text-white/80 text-lg">Pattern Accuracy</div>
-            </div>
-            <div className="group">
-              <div className="text-5xl md:text-6xl font-bold text-transparent bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                2-5
-              </div>
-              <div className="text-white/80 text-lg">Samples Needed</div>
-            </div>
-            <div className="group">
-              <div className="text-5xl md:text-6xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                10x
-              </div>
-              <div className="text-white/80 text-lg">Faster Editing</div>
-            </div>
-            <div className="group">
-              <div className="text-5xl md:text-6xl font-bold text-transparent bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                100%
-              </div>
-              <div className="text-white/80 text-lg">Style Consistency</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <TestimonialsSection />
-
-      {/* FAQ */}
-      <FAQSection />
-
-      {/* CTA Section */}
-      <section className="py-24 px-6 bg-gradient-to-r from-blue-900/20 to-purple-900/20">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">Ready to Transform Your Writing Process?</h2>
-          <p className="text-xl text-white/80 mb-8">
-            Start training your AI writing assistant today and maintain perfect style consistency across all your
-            documents.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/training">
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-4 rounded-full">
-                Start Training Now
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 text-lg px-8 py-4 bg-transparent rounded-full"
-            >
-              Schedule Demo
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <Footer />
     </div>
   )
 }
